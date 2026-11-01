@@ -16,8 +16,7 @@
 
 | 다운로드 파일 | 파일명 | 설명 |
 | :--- | :--- | :--- |
-| **정식 릴리스 APK (권장)** | **[`kcook_wss_v1.0.5.apk`](https://github.com/droidbin/KCAA-WSS-APP/releases/download/v1.0.5/kcook_wss_v1.0.5.apk)** | 사내 배포용 공식 릴리스 서명 설치 파일 |
-| **기존 앱 유지용 APK** | **[`kcook_wss_v1.0.5_debug.apk`](https://github.com/droidbin/KCAA-WSS-APP/releases/download/v1.0.5/kcook_wss_v1.0.5_debug.apk)** | 기존 테스트 앱 삭제 없이 바로 덮어쓰기 업데이트 |
+| **정식 릴리스 APK** | **[`kcook_wss_v1.0.5.apk`](https://github.com/droidbin/KCAA-WSS-APP/releases/download/v1.0.5/kcook_wss_v1.0.5.apk)** | 사내 배포용 공식 릴리스 서명 설치 파일 |
 | **스토어 배포용 번들** | **[`app-release.aab`](https://github.com/droidbin/KCAA-WSS-APP/releases/download/v1.0.5/app-release.aab)** | Google Play Console 등록용 App Bundle |
 
 > 📌 **첫 설치 시 안내 (사내 배포 앱)**:
