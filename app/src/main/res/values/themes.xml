@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.GwangjuWorkPortal" parent="Theme.Material3.DayNight.NoActionBar">
+        <item name="colorPrimary">@color/portal_primary</item>
+        <item name="colorSecondary">@color/portal_accent</item>
+        <item name="android:statusBarColor">@color/portal_primary_dark</item>
+        <item name="android:navigationBarColor">@color/portal_surface</item>
+        <item name="android:windowLightStatusBar">false</item>
+    </style>
+
+    <style name="Theme.GwangjuWorkPortal.Starting" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/portal_surface</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_splash_logo</item>
+        <item name="postSplashScreenTheme">@style/Theme.GwangjuWorkPortal</item>
+    </style>
+</resources>

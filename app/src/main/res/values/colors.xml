@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="portal_primary">#1E3A8A</color>
+    <color name="portal_primary_dark">#172554</color>
+    <color name="portal_accent">#2563EB</color>
+    <color name="portal_background">#F8FAFC</color>
+    <color name="portal_surface">#FFFFFF</color>
+    <color name="text_primary">#0F172A</color>
+    <color name="text_secondary">#475569</color>
+</resources>
