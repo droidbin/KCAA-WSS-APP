@@ -36,8 +36,27 @@ android {
                 storePassword = keystoreProperties.getProperty("RELEASE_STORE_PASSWORD")
                 keyAlias = keystoreProperties.getProperty("RELEASE_KEY_ALIAS")
                 keyPassword = keystoreProperties.getProperty("RELEASE_KEY_PASSWORD")
+                enableV1Signing = true
+                enableV2Signing = true
+                enableV3Signing = true
+                enableV4Signing = true
             }
         }
+    }
+
+    applicationVariants.all {
+        val variant = this
+        outputs
+            .map { it as com.android.build.gradle.internal.api.BaseVariantOutputImpl }
+            .forEach { output ->
+                val vName = variant.versionName
+                val bType = variant.buildType.name
+                output.outputFileName = if (bType == "release") {
+                    "kcook_wss_v${vName}.apk"
+                } else {
+                    "kcook_wss_v${vName}_debug.apk"
+                }
+            }
     }
 
     buildTypes {
