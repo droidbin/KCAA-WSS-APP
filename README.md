@@ -1,47 +1,87 @@
-# 광주 업무지원포털 Android 애플리케이션 (v1.0.0)
+# 요리광주 업무지원포털 모바일 앱 (v1.0.5)
 
-`https://gwangju-work-portal.droidbin.chatgpt.site/` 업무지원포털을 위한 **Custom Android WebView 기반 하이브리드 애플리케이션**입니다.
+[![Release](https://img.shields.io/badge/Release-v1.0.5-blue.svg)](https://github.com/droidbin/KCAA-WSS-APP/releases/tag/v1.0.5)
+[![Platform](https://img.shields.io/badge/Platform-Android%208.0+-green.svg)](https://developer.android.com)
+[![Target SDK](https://img.shields.io/badge/Target%20SDK-35-orange.svg)](https://developer.android.com/about/versions/15)
 
-## 주요 아키텍처 및 적용 기능
+**요리광주 업무지원포털 모바일 앱**은 광주요리아카데미 임직원 및 강사진의 원활한 업무 수행과 행정 편의를 지원하기 위해 제작된 **공식 Android 하이브리드 애플리케이션**입니다.
 
-1. **최적화된 Custom WebView 엔진 (`MainActivity.kt`)**
-   - DOM Storage, 쿠키 영속화(`CookieManager.flush()`), 다중 창(`window.open` / `target="_blank"`) 제어
-   - 시스템 폰트 크기 변경 시 웹 레이아웃 무너짐 방지(`textZoom = 100`)
-   - User-Agent 커스텀 식별자(`KCAAWssAndroid/1.0.0`) 추가
+포털 서비스 URL: `https://gwangju-work-portal.droidbin.chatgpt.site/`
 
-2. **네이티브 UX & 신규 브랜드 아이덴티티 통합**
-   - **신규 로고 및 아이콘 적용**: 대한민국 검찰청 스타일의 고해상도 심볼 로고를 바탕으로 Adaptive Icon(`ic_launcher`, `ic_launcher_round`), Android 12+ SplashScreen(`ic_splash_logo`), 웹 상단 브랜드 로고에 일관 적용
-   - **Splash Screen API**: Android 12+ 표준 스플래시 화면 적용 및 초기 웹페이지 로딩 완료 시점 연동
-   - **Swipe-to-Refresh**: 최상단 스크롤(`scrollY == 0`) 상태에서만 당겨서 새로고침이 동작하여 웹 내부 스크롤과 충돌 방지
-   - **네이티브 오프라인/에러 화면**: 네트워크 단절 또는 메인 프레임 로드 실패 시 기본 브라우저 에러 페이지 대신 네이티브 재시도/홈 이동 UI 제공
-   - **스마트 뒤로가기 제어 (`OnBackPressedDispatcher`)**: WebView 히스토리 탐색 후 더 이상 뒤로 갈 페이지가 없을 때 2초 내 더블 탭 종료 안내
+---
 
-3. **앱 설치 UX 및 사용자 편의 중심 설정 메뉴 개편**
-   - **앱 설치하기 버튼 자동 은닉**: 네이티브 앱 및 단독 실행(Standalone) 환경에서 불필요한 '앱 설치하기' 버튼 및 홈 화면 추가 안내 문구를 자동 감지하여 완전 숨김 처리
-   - **사용자 편의 최우선 설정 메뉴 (`⚙️ 설정`)**:
-     - 기존 혼잡했던 '앱 설치 · 알림 설정' 및 '관리자 메뉴'를 직관적인 모달 레이아웃으로 통합 개편
-     - **공지 푸시 알림 제어**: 실시간 알림 수신 상태 뱃지, 원클릭 켜기/끄기, Android 시스템 기기 알림 설정 바로가기 제공
-     - **앱 환경 관리**: 화면 새로고침, 원클릭 캐시 및 세션 정리, 앱 버전 정보 확인
-     - **업무 바로가기**: 의무교육 수강, 발주요청서 작성, 학과별 대시보드, 카카오톡 1:1 상담
-     - **정돈된 관리자 메뉴**: 관리자 로그인 상태에 따라 URL 관리, Slack 알림, 공지 발송 관리, 휴지통, 인사관리, 로그아웃을 깔끔한 카드 리스트로 제공
+## 📱 앱 설치 및 다운로드 안내
 
-4. **파일 업로드 & 다운로드 완벽 지원**
-   - **파일 업로드 (`onShowFileChooser`)**: `<input type="file">` 호출 시 **즉시 카메라 촬영(`FileProvider`)** 또는 **내장 파일/갤러리 선택**을 동시에 제공하는 Chooser 연동
-   - **파일 다운로드 (`PortalDownloadHelper.kt`)**: WebView의 로그인 세션 쿠키(`CookieManager`)와 `User-Agent`를 Android 시스템 `DownloadManager`에 주입하여 인증이 필요한 포털 첨부파일도 끊김 없이 다운로드
+사내 메신저(카카오톡, 슬랙) 및 사내 인트라넷을 통해 즉시 스마트폰에 설치할 수 있습니다.
 
-5. **웹 ↔ 네이티브 양방향 브릿지 (`PortalJsBridge.kt`)**
-   - 웹 포털의 JavaScript에서 `window.AndroidPortalBridge` 객체를 통해 네이티브 기능 호출 가능:
-     - `window.AndroidPortalBridge.getAppInfo()` : 앱 버전 및 기기 정보(JSON) 반환
-     - `window.AndroidPortalBridge.isNativeApp()` : 네이티브 앱 환경 식별(true)
-     - `window.AndroidPortalBridge.getLogoBase64()` : 신규 로고 base64 데이터 반환
-     - `window.AndroidPortalBridge.openNotificationSettings()` : 기기 시스템 알림 설정 화면 바로가기
-     - `window.AndroidPortalBridge.showToast("메시지")` : 네이티브 토스트 출력
-     - `window.AndroidPortalBridge.reloadPortal()` : 포털 새로고침
-     - `window.AndroidPortalBridge.clearSessionAndCache()` : 로그아웃 시 웹뷰 쿠키/캐시 완전 초기화
+| 다운로드 파일 | 파일명 | 설명 |
+| :--- | :--- | :--- |
+| **정식 릴리스 APK (권장)** | **[`kcook_wss_v1.0.5.apk`](https://github.com/droidbin/KCAA-WSS-APP/releases/download/v1.0.5/kcook_wss_v1.0.5.apk)** | 사내 배포용 공식 릴리스 서명 설치 파일 |
+| **기존 앱 유지용 APK** | **[`kcook_wss_v1.0.5_debug.apk`](https://github.com/droidbin/KCAA-WSS-APP/releases/download/v1.0.5/kcook_wss_v1.0.5_debug.apk)** | 기존 테스트 앱 삭제 없이 바로 덮어쓰기 업데이트 |
+| **스토어 배포용 번들** | **[`app-release.aab`](https://github.com/droidbin/KCAA-WSS-APP/releases/download/v1.0.5/app-release.aab)** | Google Play Console 등록용 App Bundle |
 
-## 빌드 및 실행 방법
+> 📌 **첫 설치 시 안내 (사내 배포 앱)**:
+> 1. 링크 클릭 후 다운로드 진행 시 "유해한 파일일 수 있음" 경고 발생 시 **[무시하고 다운로드]** 선택
+> 2. 다운로드 완료 후 파일 실행 ➔ **[설치]** 클릭 (필요 시 '이 출처의 앱 허용' 활성화)
+> 3. 앱 실행 후 새 공지 알림 수신을 위해 **[알림 허용]** 선택
 
-1. **Android Studio**에서 프로젝트 루트 폴더(`KCAA-WSS-APP`)를 엽니다.
-2. Gradle Sync 완료 후 에뮬레이터 또는 실제 기기를 연결하고 **Run (`Shift + F10`)**을 실행합니다.
-3. APK 직접 생성 시:
-   - **Build > Build Bundle(s) / APK(s) > Build APK(s)** 메뉴를 통해 배포용/테스트용 APK를 즉시 추출할 수 있습니다.
+---
+
+## 🚀 주요 핵심 기능 및 아키텍처
+
+### 1. 최적화된 WebView 엔진 (`MainActivity.kt`)
+- **보안 및 스토리지**: DOM Storage, 세션 쿠키 영속화(`CookieManager.flush()`), 다중 창(`window.open` / `target="_blank"`) 제어
+- **레이아웃 보호**: 사용자 시스템 폰트 크기 변경에 따른 웹 UI 깨짐 방지 (`textZoom = 100`)
+- **Android 15 Edge-to-Edge 지원**: 상태바 및 시스템 네비게이션 바와의 겹침 방지 (`ViewCompat.setOnApplyWindowInsetsListener`)
+- **User-Agent 식별자**: 안드로이드 전용 앱임을 식별할 수 있는 브라우저 에이전트 주입 (`KCAAWssAndroid/1.0.5`)
+
+### 2. 브랜드 디자인 및 가독성 최적화
+- **상단 헤더 로고 화이트 반전**: 어두운 네이비 배경(`header.top`) 위에서 로고가 선명하게 돋보이도록 순백색 반전 필터 및 드롭 섀도우 적용
+- **서브 시스템 로고 호환**: 수강생 증명서 발급 등 흰색 배경 페이지의 헤더에서는 고유 다크 엠블럼을 유지하도록 자동 판별
+- **Adaptive Launcher Icon**: 안드로이드 표준 규격의 라운드 및 스퀘어 아이콘 지원
+
+### 3. 사용자 중심의 설정 모달 (`⚙️ 설정`)
+- **실시간 공지 알림 센터**: 기기 시스템 알림 허용 여부 상태 뱃지, 원클릭 알림 권한 요청, 테스트 알림 발송, 시스템 설정 바로가기 제공
+- **빠른 업무 바로가기**:
+  - 🎓 법정의무교육 온라인 수강 바로가기
+  - 📋 물품 및 수업자재 발주요청서 작성
+  - 💬 카카오톡 1:1 업무지원 상담 채널
+  - 📄 수강생 증명서 발급 시스템 다이렉트 연동
+- **앱 환경 관리**: 포털 원클릭 새로고침 및 캐시/세션 초기화 기능
+
+### 4. 네이티브 파일 입출력 완벽 연동
+- **파일 업로드 (`WebChromeClient.onShowFileChooser`)**: `<input type="file">` 동작 시 **카메라 즉시 촬영(`FileProvider`)**과 **갤러리/파일 탐색기** 동시 지원
+- **첨부파일 다운로드 (`PortalDownloadHelper.kt`)**: 세션 인증 쿠키를 안드로이드 시스템 `DownloadManager`에 주입하여 권한이 필요한 첨부파일도 안전하게 다운로드
+
+### 5. Google Play Protect 및 배포 자동화
+- **정식 릴리스 서명**: `release-upload-key.jks` (SHA-256) 정식 서명 적용
+- **R8 / ProGuard 코드 난독화**: 릴리스 바이너리 경량화 및 앱 무결성 검증
+- **패키징 자동화**: 빌드 시 `kcook_wss_v{versionName}.apk` 형식으로 자동 명명
+
+---
+
+## 🛠️ 빌드 및 패키징 방법
+
+### 개발 환경
+- **Android Studio**: Ladybug / Jellyfish 이상 권장
+- **JDK**: Java 17
+- **Gradle**: 8.9 (Kotlin DSL)
+- **Compile SDK**: 35 (Android 15)
+- **Min SDK**: 26 (Android 8.0 Oreo)
+
+### 빌드 명령어
+```bash
+# 1. 정식 릴리스 APK 빌드 (kcook_wss_v1.0.5.apk 생성)
+./gradlew assembleRelease
+
+# 2. Google Play Store 배포용 번들 빌드 (app-release.aab 생성)
+./gradlew bundleRelease
+
+# 3. 디버그 호환용 APK 빌드 (kcook_wss_v1.0.5_debug.apk 생성)
+./gradlew assembleDebug
+```
+
+출력 파일 경로:
+- Release APK: `app/build/outputs/apk/release/kcook_wss_v1.0.5.apk`
+- Release AAB: `app/build/outputs/bundle/release/app-release.aab`
+- Debug APK: `app/build/outputs/apk/debug/kcook_wss_v1.0.5_debug.apk`
