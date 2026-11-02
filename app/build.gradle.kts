@@ -21,8 +21,12 @@ android {
         applicationId = "kr.or.kcaa.gwangju.portal"
         minSdk = 26
         targetSdk = 35
-        versionCode = 6
-        versionName = "1.0.5"
+        // 버전 관리 정책:
+        // - 최초 정식 릴리즈: 1.0
+        // - 마이너 업데이트: +0.1 단위 (1.1, 1.2, ...)
+        // - 메이저 업데이트: +1.0 단위 (2.0, 3.0, ...)
+        versionCode = 7
+        versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         buildConfigField("String", "PORTAL_BASE_URL", "\"https://gwangju-work-portal.droidbin.chatgpt.site/\"")

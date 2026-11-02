@@ -1,6 +1,6 @@
-# 요리광주 업무지원포털 모바일 앱 (v1.0.5)
+# 요리광주 업무지원포털 모바일 앱 (v1.0)
 
-[![Release](https://img.shields.io/badge/Release-v1.0.5-blue.svg)](https://github.com/droidbin/KCAA-WSS-APP/releases/tag/v1.0.5)
+[![Release](https://img.shields.io/badge/Release-v1.0-blue.svg)](https://github.com/droidbin/KCAA-WSS-APP/releases/tag/v1.0)
 [![Platform](https://img.shields.io/badge/Platform-Android%208.0+-green.svg)](https://developer.android.com)
 [![Target SDK](https://img.shields.io/badge/Target%20SDK-35-orange.svg)](https://developer.android.com/about/versions/15)
 
@@ -16,13 +16,27 @@
 
 | 다운로드 파일 | 파일명 | 설명 |
 | :--- | :--- | :--- |
-| **정식 릴리스 APK** | **[`kcook_wss_v1.0.5.apk`](https://github.com/droidbin/KCAA-WSS-APP/releases/download/v1.0.5/kcook_wss_v1.0.5.apk)** | 사내 배포용 공식 릴리스 서명 설치 파일 |
-| **스토어 배포용 번들** | **[`app-release.aab`](https://github.com/droidbin/KCAA-WSS-APP/releases/download/v1.0.5/app-release.aab)** | Google Play Console 등록용 App Bundle |
+| **정식 릴리스 APK** | **[`kcook_wss_v1.0.apk`](https://github.com/droidbin/KCAA-WSS-APP/releases/download/v1.0/kcook_wss_v1.0.apk)** | 사내 배포용 공식 릴리스 서명 설치 파일 |
+| **스토어 배포용 번들** | **[`app-release.aab`](https://github.com/droidbin/KCAA-WSS-APP/releases/download/v1.0/app-release.aab)** | Google Play Console 등록용 App Bundle |
 
 > 📌 **첫 설치 시 안내 (사내 배포 앱)**:
 > 1. 링크 클릭 후 다운로드 진행 시 "유해한 파일일 수 있음" 경고 발생 시 **[무시하고 다운로드]** 선택
 > 2. 다운로드 완료 후 파일 실행 ➔ **[설치]** 클릭 (필요 시 '이 출처의 앱 허용' 활성화)
 > 3. 앱 실행 후 새 공지 알림 수신을 위해 **[알림 허용]** 선택
+
+---
+
+## 🔢 버전 관리(Versioning) 정책
+
+본 프로젝트는 직관적인 `Major.Minor` 2자리 버전 체계를 따릅니다.
+
+| 구분 | 증가 단위 | 예시 | 기준 |
+| :--- | :--- | :--- | :--- |
+| **초기 정식 릴리스** | `1.0` | `v1.0` | 최초 정식 배포 버전 |
+| **마이너 업데이트** | `+0.1` | `v1.1`, `v1.2`, `v1.3` ... | 기능 개선, UI/UX 보완, 버그 수정 및 소규모 기능 추가 |
+| **메이저 업데이트** | `+1.0` | `v2.0`, `v3.0` ... | 대규모 아키텍처 개편, 핵심 신규 모듈 도입, 대규모 UI 리뉴얼 |
+
+* Android 내부 빌드 번호(`versionCode`)는 스토어 및 기기 업데이트 호환성을 위해 매 릴리스마다 `+1`씩 단조 증가합니다.
 
 ---
 
@@ -32,7 +46,7 @@
 - **보안 및 스토리지**: DOM Storage, 세션 쿠키 영속화(`CookieManager.flush()`), 다중 창(`window.open` / `target="_blank"`) 제어
 - **레이아웃 보호**: 사용자 시스템 폰트 크기 변경에 따른 웹 UI 깨짐 방지 (`textZoom = 100`)
 - **Android 15 Edge-to-Edge 지원**: 상태바 및 시스템 네비게이션 바와의 겹침 방지 (`ViewCompat.setOnApplyWindowInsetsListener`)
-- **User-Agent 식별자**: 안드로이드 전용 앱임을 식별할 수 있는 브라우저 에이전트 주입 (`KCAAWssAndroid/1.0.5`)
+- **User-Agent 식별자**: 안드로이드 전용 앱임을 식별할 수 있는 브라우저 에이전트 주입 (`KCAAWssAndroid/1.0`)
 
 ### 2. 브랜드 디자인 및 가독성 최적화
 - **상단 헤더 로고 화이트 반전**: 어두운 네이비 배경(`header.top`) 위에서 로고가 선명하게 돋보이도록 순백색 반전 필터 및 드롭 섀도우 적용
@@ -46,7 +60,7 @@
   - 📋 물품 및 수업자재 발주요청서 작성
   - 💬 카카오톡 1:1 업무지원 상담 채널
   - 📄 수강생 증명서 발급 시스템 다이렉트 연동
-- **앱 환경 관리**: 포털 원클릭 새로고침 및 캐시/세션 초기화 기능
+- **앱 환경 관리**: 포털 원클릭 새로고침 및 캐시/세션 초기화 기능, 앱 버전(`v1.0`) 자동 연동 표시
 
 ### 4. 네이티브 파일 입출력 완벽 연동
 - **파일 업로드 (`WebChromeClient.onShowFileChooser`)**: `<input type="file">` 동작 시 **카메라 즉시 촬영(`FileProvider`)**과 **갤러리/파일 탐색기** 동시 지원
@@ -70,17 +84,17 @@
 
 ### 빌드 명령어
 ```bash
-# 1. 정식 릴리스 APK 빌드 (kcook_wss_v1.0.5.apk 생성)
+# 1. 정식 릴리스 APK 빌드 (kcook_wss_v1.0.apk 생성)
 ./gradlew assembleRelease
 
 # 2. Google Play Store 배포용 번들 빌드 (app-release.aab 생성)
 ./gradlew bundleRelease
 
-# 3. 디버그 호환용 APK 빌드 (kcook_wss_v1.0.5_debug.apk 생성)
+# 3. 디버그 호환용 APK 빌드 (kcook_wss_v1.0_debug.apk 생성)
 ./gradlew assembleDebug
 ```
 
 출력 파일 경로:
-- Release APK: `app/build/outputs/apk/release/kcook_wss_v1.0.5.apk`
+- Release APK: `app/build/outputs/apk/release/kcook_wss_v1.0.apk`
 - Release AAB: `app/build/outputs/bundle/release/app-release.aab`
-- Debug APK: `app/build/outputs/apk/debug/kcook_wss_v1.0.5_debug.apk`
+- Debug APK: `app/build/outputs/apk/debug/kcook_wss_v1.0_debug.apk`

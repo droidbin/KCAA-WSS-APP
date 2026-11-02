@@ -85,7 +85,17 @@
       extraContainer.style.gap = '12px';
       extraContainer.style.marginTop = '4px';
 
-      // 관리자 로그인 상태 확인
+      // 네이티브 브릿지에서 현재 앱 버전명을 동적으로 조회 (기본값 1.0)
+      let currentAppVersion = '1.0';
+      try {
+        const infoJson = window.AndroidPortalBridge?.getAppInfo?.();
+        if (infoJson) {
+          const parsed = JSON.parse(infoJson);
+          if (parsed.versionName) currentAppVersion = parsed.versionName;
+        }
+      } catch (e) {
+        // ignore parse error
+      }
       const adminMenu = document.getElementById('admin-menu');
       const isAdminLogged = adminMenu && !adminMenu.hidden;
 
@@ -190,7 +200,7 @@
         </div>
 
         <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:6px">
-          요리광주 업무지원포털 Android 전용 앱 v1.0.5
+          요리광주 업무지원포털 Android 전용 앱 v${currentAppVersion}
         </div>
       `;
 
