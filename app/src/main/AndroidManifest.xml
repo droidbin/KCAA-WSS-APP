@@ -38,11 +38,14 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
 
-            <!-- Deep Link support for Portal URL -->
+            <!-- Deep Link support for Portal URL (New & Legacy Domains) -->
             <intent-filter android:autoVerify="true">
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
+                <data
+                    android:scheme="https"
+                    android:host="gwangju-work-portal.pages.dev" />
                 <data
                     android:scheme="https"
                     android:host="gwangju-work-portal.droidbin.chatgpt.site" />

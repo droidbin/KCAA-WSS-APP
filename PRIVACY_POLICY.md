@@ -62,4 +62,4 @@
 - **기관명**: 코리아요리아트아카데미광주
 - **서비스명**: 요리광주 업무지원포털 모바일 앱
 - **문의처**: 포털 내 1:1 지원 채널 및 사내 행정지원실
-- **포털 웹사이트**: https://gwangju-work-portal.droidbin.chatgpt.site/
+- **포털 웹사이트**: https://gwangju-work-portal.pages.dev/
