@@ -336,7 +336,7 @@ class MainActivity : AppCompatActivity() {
 
         val notification = NotificationCompat.Builder(this, CHANNEL_ID)
             .setSmallIcon(R.mipmap.ic_launcher)
-            .setContentTitle("요리광주 업무지원포털")
+            .setContentTitle(getString(R.string.app_name))
             .setContentText("새로운 공지사항 및 포털 알림이 정상적으로 수신됩니다.")
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
             .setContentIntent(pendingIntent)
