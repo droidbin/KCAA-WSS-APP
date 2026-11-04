@@ -15,17 +15,17 @@ val keystoreProperties = Properties().apply {
 
 android {
     namespace = "kr.or.kcaa.gwangju.portal"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "kr.or.kcaa.gwangju.portal"
         minSdk = 26
-        targetSdk = 35
+        targetSdk = 36
         // 버전 관리 정책:
         // - 최초 정식 릴리즈: 1.0
         // - 마이너 업데이트: +0.1 단위 (1.1, 1.2, ...)
         // - 메이저 업데이트: +1.0 단위 (2.0, 3.0, ...)
-        versionCode = 8
+        versionCode = 9
         versionName = "1.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"

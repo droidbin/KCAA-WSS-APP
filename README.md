@@ -2,7 +2,7 @@
 
 [![Release](https://img.shields.io/badge/Release-v1.1-blue.svg)](https://github.com/droidbin/KCAA-WSS-APP/releases/tag/v1.1)
 [![Platform](https://img.shields.io/badge/Platform-Android%208.0+-green.svg)](https://developer.android.com)
-[![Target SDK](https://img.shields.io/badge/Target%20SDK-35-orange.svg)](https://developer.android.com/about/versions/15)
+[![Target SDK](https://img.shields.io/badge/Target%20SDK-36-orange.svg)](https://developer.android.com)
 
 **요리광주 업무지원포털 모바일 앱**은 코리아요리아트아카데미광주 임직원 및 강사진의 원활한 업무 수행과 행정 편의를 지원하기 위해 제작된 **공식 Android 하이브리드 애플리케이션**입니다.
 
@@ -79,7 +79,7 @@
 - **Android Studio**: Ladybug / Jellyfish 이상 권장
 - **JDK**: Java 17
 - **Gradle**: 8.9 (Kotlin DSL)
-- **Compile SDK**: 35 (Android 15)
+- **Compile SDK**: 36 (Android 16)
 - **Min SDK**: 26 (Android 8.0 Oreo)
 
 ### 빌드 명령어
