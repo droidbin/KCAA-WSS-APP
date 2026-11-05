@@ -1,4 +1,4 @@
-/* 광주 업무지원포털 Android 하이브리드 최적화 스타일 (v1.1) */
+/* 광주 업무지원포털 Android 하이브리드 최적화 스타일 (v1.1.1) */
 
 /* 1. 상단 헤더: 제목(브랜드)과 버튼을 모든 모바일 기기에서 동일한 1열(Row)에 중앙 정렬 */
 .top,
@@ -312,4 +312,14 @@ header:not(.top) .brand img,
     margin-top: 6px !important;
     display: block !important;
     text-align: center !important;
+}
+
+
+/* 6. 안드로이드 전용 앱 내부: 웹의 앱 설치 안내 배너 및 모달 다이얼로그 완전 숨김 */
+#android-banner,
+.android-banner,
+.android-dialog-banner,
+.android-dialog-btn,
+.android-banner-btn {
+    display: none !important;
 }

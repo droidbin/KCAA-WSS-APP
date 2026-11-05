@@ -22,11 +22,11 @@ android {
         minSdk = 26
         targetSdk = 36
         // 버전 관리 정책:
-        // - 최초 정식 릴리즈: 1.0
-        // - 마이너 업데이트: +0.1 단위 (1.1, 1.2, ...)
-        // - 메이저 업데이트: +1.0 단위 (2.0, 3.0, ...)
-        versionCode = 9
-        versionName = "1.1"
+        // - 1 단위: 메이저 업데이트 (2.0.0, 3.0.0, ...)
+        // - 0.1 단위: 마이너 업데이트 (1.1.0, 1.2.0, ...)
+        // - 0.0.1 단위: 버그 픽스, 안정성 패치 (1.1.1, 1.1.2, ...)
+        versionCode = 10
+        versionName = "1.1.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         buildConfigField("String", "PORTAL_BASE_URL", "\"https://gwangju-work-portal.pages.dev/\"")

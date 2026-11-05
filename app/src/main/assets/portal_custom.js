@@ -86,7 +86,7 @@
       extraContainer.style.marginTop = '4px';
 
       // 네이티브 브릿지에서 현재 앱 버전명을 동적으로 조회 (기본값 1.1)
-      let currentAppVersion = '1.1';
+      let currentAppVersion = '1.1.1';
       try {
         const infoJson = window.AndroidPortalBridge?.getAppInfo?.();
         if (infoJson) {
@@ -296,8 +296,30 @@
     }
   }
 
+  // 4. 안드로이드 전용 앱 내부에서 웹의 "앱 설치 안내" 배너 및 다이얼로그 노출 방지
+  function hideAppInstallBanners() {
+    try {
+      localStorage.setItem('portal:app-installed', '1');
+    } catch {}
+
+    const banner = document.getElementById('android-banner');
+    if (banner) {
+      banner.hidden = true;
+      banner.style.setProperty('display', 'none', 'important');
+    }
+
+    const dialogTitle = document.getElementById('dialog-title');
+    if (dialogTitle && (dialogTitle.textContent.includes('앱 설치') || dialogTitle.textContent.includes('안드로이드 앱'))) {
+      const dialog = document.getElementById('notice-dialog') || document.querySelector('dialog[open]');
+      if (dialog && typeof dialog.close === 'function') {
+        dialog.close();
+      }
+    }
+  }
+
   // 전체 실행 루틴
   function runAll() {
+    hideAppInstallBanners();
     applyLogo();
     applyHeaderEnhancements();
     enhanceSettingsDialog();
