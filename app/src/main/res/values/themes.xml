@@ -1,15 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <!-- 요리광주 업무지원포털 기본 앱 테마 -->
     <style name="Theme.GwangjuWorkPortal" parent="Theme.Material3.DayNight.NoActionBar">
-        <item name="colorPrimary">@color/portal_primary</item>
-        <item name="colorSecondary">@color/portal_accent</item>
+        <item name="colorPrimary">@color/portal_accent</item>
+        <item name="colorSecondary">@color/portal_primary</item>
         <item name="android:statusBarColor">@color/portal_primary_dark</item>
-        <item name="android:navigationBarColor">@color/portal_surface</item>
+        <item name="android:navigationBarColor">@color/portal_background</item>
         <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowLightNavigationBar">true</item>
     </style>
 
+    <!-- Android 12+ 초기 스플래시 테마 -->
     <style name="Theme.GwangjuWorkPortal.Starting" parent="Theme.SplashScreen">
-        <item name="windowSplashScreenBackground">@color/portal_surface</item>
+        <item name="windowSplashScreenBackground">@color/portal_background</item>
         <item name="windowSplashScreenAnimatedIcon">@drawable/ic_splash_logo</item>
         <item name="postSplashScreenTheme">@style/Theme.GwangjuWorkPortal</item>
     </style>

@@ -21,6 +21,7 @@
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
+        app:trackColor="@color/portal_primary_dark"
         app:trackThickness="3dp" />
 
     <!-- 당겨서 새로고침 + 메인 WebView -->
@@ -41,7 +42,7 @@
 
     </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
 
-    <!-- 오프라인 / 네트워크 오류 시 표시되는 네이티브 안내 화면 -->
+    <!-- 오프라인 / 네트워크 오류 시 표시되는 네이티브 포털 카드 안내 화면 -->
     <LinearLayout
         android:id="@+id/errorContainer"
         android:layout_width="0dp"
@@ -49,51 +50,189 @@
         android:background="@color/portal_background"
         android:gravity="center"
         android:orientation="vertical"
-        android:padding="32dp"
+        android:padding="24dp"
         android:visibility="gone"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent">
 
-        <TextView
-            android:id="@+id/tvErrorTitle"
-            android:layout_width="wrap_content"
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:gravity="center"
-            android:text="@string/error_network_title"
-            android:textColor="@color/text_primary"
-            android:textSize="20sp"
-            android:textStyle="bold" />
+            app:cardBackgroundColor="@color/portal_surface"
+            app:cardCornerRadius="16dp"
+            app:cardElevation="2dp"
+            app:strokeColor="@color/portal_card_border"
+            app:strokeWidth="1dp">
 
-        <TextView
-            android:id="@+id/tvErrorDesc"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
-            android:gravity="center"
-            android:text="@string/error_network_desc"
-            android:textColor="@color/text_secondary"
-            android:textSize="14sp" />
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center"
+                android:orientation="vertical"
+                android:paddingHorizontal="24dp"
+                android:paddingVertical="32dp">
 
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btnRetry"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="24dp"
-            android:paddingHorizontal="28dp"
-            android:paddingVertical="12dp"
-            android:text="@string/action_retry"
-            app:cornerRadius="8dp" />
+                <ImageView
+                    android:layout_width="64dp"
+                    android:layout_height="64dp"
+                    android:contentDescription="@string/app_loading_title"
+                    android:src="@drawable/logo_emblem" />
 
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btnGoHome"
-            style="@style/Widget.Material3.Button.TextButton"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:text="@string/action_go_home" />
+                <TextView
+                    android:id="@+id/tvErrorTitle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="20dp"
+                    android:gravity="center"
+                    android:text="@string/error_network_title"
+                    android:textColor="@color/text_primary"
+                    android:textSize="18sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/tvErrorDesc"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:gravity="center"
+                    android:lineSpacingExtra="4dp"
+                    android:text="@string/error_network_desc"
+                    android:textColor="@color/text_secondary"
+                    android:textSize="13.5sp" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnRetry"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="24dp"
+                    android:backgroundTint="@color/portal_accent"
+                    android:paddingVertical="13dp"
+                    android:text="@string/action_retry"
+                    android:textColor="@color/portal_surface"
+                    android:textSize="14sp"
+                    android:textStyle="bold"
+                    app:cornerRadius="10dp" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnGoHome"
+                    style="@style/Widget.Material3.Button.TextButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:text="@string/action_go_home"
+                    android:textColor="@color/portal_accent"
+                    android:textSize="13sp" />
+
+            </LinearLayout>
+
+        </com.google.android.material.card.MaterialCardView>
 
     </LinearLayout>
+
+    <!-- 앱 실행 시 포털 브랜딩 로딩 화면 (Seamless Loading Overlay) -->
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:id="@+id/loadingOverlay"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:background="@color/portal_background"
+        android:clickable="true"
+        android:focusable="true"
+        android:visibility="visible"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent">
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:gravity="center_horizontal"
+            android:orientation="vertical"
+            android:padding="24dp"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintVertical_bias="0.45">
+
+            <!-- 엠블럼 로고 -->
+            <ImageView
+                android:id="@+id/ivLoadingLogo"
+                android:layout_width="84dp"
+                android:layout_height="84dp"
+                android:contentDescription="@string/app_loading_title"
+                android:src="@drawable/logo_emblem" />
+
+            <!-- 영문 아이브로우 -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="20dp"
+                android:letterSpacing="0.12"
+                android:text="@string/app_loading_eyebrow"
+                android:textColor="@color/portal_eyebrow"
+                android:textSize="11sp"
+                android:textStyle="bold" />
+
+            <!-- 로고 아래 메인 타이틀: 요리광주 업무지원포털 -->
+            <TextView
+                android:id="@+id/tvLoadingTitle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="5dp"
+                android:letterSpacing="-0.02"
+                android:text="@string/app_loading_title"
+                android:textColor="@color/portal_primary"
+                android:textSize="21sp"
+                android:textStyle="bold" />
+
+            <!-- 서브 기관명 -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:text="@string/app_loading_division"
+                android:textColor="@color/text_secondary"
+                android:textSize="12sp" />
+
+            <!-- 세련된 로딩 프로그레스 인디케이터 -->
+            <com.google.android.material.progressindicator.CircularProgressIndicator
+                android:id="@+id/loadingIndicator"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="32dp"
+                android:indeterminate="true"
+                app:indicatorColor="@color/portal_accent"
+                app:indicatorSize="32dp"
+                app:trackColor="@color/portal_card_border"
+                app:trackThickness="3dp" />
+
+            <!-- 하단 힌트 문구 -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="14dp"
+                android:text="@string/app_loading_hint"
+                android:textColor="@color/text_muted"
+                android:textSize="12sp" />
+
+        </LinearLayout>
+
+        <!-- 최하단 버전 정보 -->
+        <TextView
+            android:id="@+id/tvLoadingVersion"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="28dp"
+            android:textColor="@color/text_muted"
+            android:textSize="11sp"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            tools:text="v1.2.0" />
+
+    </androidx.constraintlayout.widget.ConstraintLayout>
 
 </androidx.constraintlayout.widget.ConstraintLayout>

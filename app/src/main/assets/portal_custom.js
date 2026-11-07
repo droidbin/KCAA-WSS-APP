@@ -85,8 +85,8 @@
       extraContainer.style.gap = '12px';
       extraContainer.style.marginTop = '4px';
 
-      // 네이티브 브릿지에서 현재 앱 버전명을 동적으로 조회 (기본값 1.1)
-      let currentAppVersion = '1.1.1';
+      // 네이티브 브릿지에서 현재 앱 버전명을 동적으로 조회 (기본값 1.2.0)
+      let currentAppVersion = '1.2.0';
       try {
         const infoJson = window.AndroidPortalBridge?.getAppInfo?.();
         if (infoJson) {

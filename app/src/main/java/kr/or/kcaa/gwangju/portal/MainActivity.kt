@@ -109,6 +109,8 @@ class MainActivity : AppCompatActivity() {
             insets
         }
 
+        binding.tvLoadingVersion.text = "v${BuildConfig.VERSION_NAME}"
+
         createNotificationChannel()
         setupWebView()
         setupSwipeRefresh()
@@ -287,7 +289,20 @@ class MainActivity : AppCompatActivity() {
         binding.webView.loadUrl(url)
     }
 
+    private fun hideLoadingOverlay() {
+        if (binding.loadingOverlay.visibility == View.VISIBLE) {
+            binding.loadingOverlay.animate()
+                .alpha(0f)
+                .setDuration(250)
+                .withEndAction {
+                    binding.loadingOverlay.visibility = View.GONE
+                    binding.loadingOverlay.alpha = 1f
+                }
+        }
+    }
+
     private fun showErrorView() {
+        binding.loadingOverlay.visibility = View.GONE
         binding.errorContainer.visibility = View.VISIBLE
         binding.swipeRefreshLayout.isRefreshing = false
         binding.progressBar.visibility = View.GONE
@@ -518,6 +533,9 @@ class MainActivity : AppCompatActivity() {
 
         override fun onPageCommitVisible(view: WebView, url: String) {
             super.onPageCommitVisible(view, url)
+            if (!hasMainFrameError) {
+                hideLoadingOverlay()
+            }
             injectPortalEnhancements(view)
         }
 
@@ -532,6 +550,7 @@ class MainActivity : AppCompatActivity() {
 
             if (!hasMainFrameError) {
                 hideErrorView()
+                hideLoadingOverlay()
                 injectPortalEnhancements(view)
             }
         }

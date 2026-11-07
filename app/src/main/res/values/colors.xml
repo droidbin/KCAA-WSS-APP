@@ -1,10 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="portal_primary">#1E3A8A</color>
-    <color name="portal_primary_dark">#172554</color>
-    <color name="portal_accent">#2563EB</color>
-    <color name="portal_background">#F8FAFC</color>
+    <!-- 요리광주 업무지원포털 브랜드 디자인 시스템 표준 컬러 -->
+    <color name="portal_primary">#123A66</color>
+    <color name="portal_primary_dark">#123A66</color>
+    <color name="portal_accent">#245F9C</color>
+    <color name="portal_accent_hover">#194D87</color>
+    <color name="portal_eyebrow">#2E6FB0</color>
+    <color name="portal_background">#F3F7FC</color>
     <color name="portal_surface">#FFFFFF</color>
-    <color name="text_primary">#0F172A</color>
-    <color name="text_secondary">#475569</color>
+    <color name="portal_card_border">#DCE6F1</color>
+    <color name="portal_card_sub">#EDF4FC</color>
+    <color name="text_primary">#1D2D43</color>
+    <color name="text_secondary">#687A92</color>
+    <color name="text_muted">#8290A1</color>
+    <color name="kakao_yellow">#FEE500</color>
 </resources>
