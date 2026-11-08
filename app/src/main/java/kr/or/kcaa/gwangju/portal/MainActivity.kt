@@ -16,6 +16,7 @@ import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.os.Message
+import android.os.SystemClock
 import android.provider.MediaStore
 import android.util.Base64
 import android.view.View
@@ -57,6 +58,9 @@ class MainActivity : AppCompatActivity() {
     private var lastBackPressedTime: Long = 0L
     private var isInitialPageLoaded: Boolean = false
     private var hasMainFrameError: Boolean = false
+    private var loadingStartTime: Long = 0L
+    private var isOverlayDismissScheduled: Boolean = false
+    private var isOverlayDismissed: Boolean = false
 
     // 파일/카메라 선택 결과 콜백
     private val fileChooserLauncher = registerForActivityResult(
@@ -93,11 +97,11 @@ class MainActivity : AppCompatActivity() {
         val splashScreen = installSplashScreen()
         super.onCreate(savedInstanceState)
 
-        // 첫 페이지가 로드되기 전까지 스플래시 화면 유지 (최대 1.5초 후에는 강제 해제)
-        val startTime = System.currentTimeMillis()
-        splashScreen.setKeepOnScreenCondition {
-            !isInitialPageLoaded && (System.currentTimeMillis() - startTime < 1500L)
-        }
+        loadingStartTime = SystemClock.elapsedRealtime()
+
+        // 시스템 스플래시(로고 아이콘만 표시)는 액티비티 준비 즉시 해제하여
+        // 브랜드 로고와 '요리광주 업무지원포털' 정식 명칭이 일체화된 브랜딩 화면으로 즉시 전환
+        splashScreen.setKeepOnScreenCondition { false }
 
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
@@ -290,18 +294,39 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun hideLoadingOverlay() {
-        if (binding.loadingOverlay.visibility == View.VISIBLE) {
-            binding.loadingOverlay.animate()
-                .alpha(0f)
-                .setDuration(250)
-                .withEndAction {
-                    binding.loadingOverlay.visibility = View.GONE
-                    binding.loadingOverlay.alpha = 1f
-                }
+        if (isOverlayDismissed || isOverlayDismissScheduled) return
+
+        val elapsed = SystemClock.elapsedRealtime() - loadingStartTime
+        val remaining = MIN_BRAND_DISPLAY_DURATION - elapsed
+
+        if (remaining > 0) {
+            isOverlayDismissScheduled = true
+            binding.loadingOverlay.postDelayed({
+                performFadeOutOverlay()
+            }, remaining)
+        } else {
+            performFadeOutOverlay()
         }
     }
 
+    private fun performFadeOutOverlay() {
+        if (isOverlayDismissed) return
+        if (binding.loadingOverlay.visibility != View.VISIBLE) return
+
+        isOverlayDismissed = true
+        binding.loadingOverlay.animate()
+            .alpha(0f)
+            .setDuration(350)
+            .withEndAction {
+                binding.loadingOverlay.visibility = View.GONE
+                binding.loadingOverlay.alpha = 1f
+            }
+            .start()
+    }
+
     private fun showErrorView() {
+        isOverlayDismissed = true
+        binding.loadingOverlay.animate().cancel()
         binding.loadingOverlay.visibility = View.GONE
         binding.errorContainer.visibility = View.VISIBLE
         binding.swipeRefreshLayout.isRefreshing = false
@@ -670,6 +695,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onDestroy() {
+        binding.loadingOverlay.animate().cancel()
         binding.webView.apply {
             stopLoading()
             webChromeClient = null
@@ -680,5 +706,6 @@ class MainActivity : AppCompatActivity() {
 
     companion object {
         const val CHANNEL_ID = "kcaa_portal_notice_channel"
+        private const val MIN_BRAND_DISPLAY_DURATION = 2000L // 브랜드 로고 및 정식 명칭 최소 노출 시간 (2.0초)
     }
 }
