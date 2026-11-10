@@ -5,9 +5,28 @@
     android:id="@+id/rootContainer"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/portal_primary_dark"
-    android:fitsSystemWindows="true"
+    android:background="@color/portal_background"
     tools:context=".MainActivity">
+
+    <!-- 상태바 영역 (Edge-to-Edge): 웹 화면에서는 포털 헤더 남색, 로딩·오류 화면에서는 밝은 배경 -->
+    <View
+        android:id="@+id/statusBarScrim"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:background="@color/portal_background"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <!-- 내비게이션 바 / 키보드 영역 -->
+    <View
+        android:id="@+id/navBarScrim"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:background="@color/portal_background"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent" />
 
     <!-- 상단 페이지 로딩 프로그레스 바 -->
     <com.google.android.material.progressindicator.LinearProgressIndicator
@@ -20,8 +39,8 @@
         app:indicatorColor="@color/portal_accent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
-        app:trackColor="@color/portal_primary_dark"
+        app:layout_constraintTop_toBottomOf="@id/statusBarScrim"
+        app:trackColor="@color/portal_surface"
         app:trackThickness="3dp" />
 
     <!-- 당겨서 새로고침 + 메인 WebView -->
@@ -29,7 +48,7 @@
         android:id="@+id/swipeRefreshLayout"
         android:layout_width="0dp"
         android:layout_height="0dp"
-        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintBottom_toTopOf="@id/navBarScrim"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/progressBar">
@@ -38,11 +57,12 @@
             android:id="@+id/webView"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
+            android:background="@color/portal_background"
             android:overScrollMode="never" />
 
     </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
 
-    <!-- 오프라인 / 네트워크 오류 시 표시되는 네이티브 포털 카드 안내 화면 -->
+    <!-- 오프라인 / 네트워크 오류 안내 화면 (포털 패널 스타일) -->
     <LinearLayout
         android:id="@+id/errorContainer"
         android:layout_width="0dp"
@@ -50,20 +70,20 @@
         android:background="@color/portal_background"
         android:gravity="center"
         android:orientation="vertical"
-        android:padding="24dp"
+        android:padding="20dp"
         android:visibility="gone"
-        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintBottom_toTopOf="@id/navBarScrim"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent">
+        app:layout_constraintTop_toBottomOf="@id/statusBarScrim">
 
         <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             app:cardBackgroundColor="@color/portal_surface"
             app:cardCornerRadius="16dp"
-            app:cardElevation="2dp"
-            app:strokeColor="@color/portal_card_border"
+            app:cardElevation="0dp"
+            app:strokeColor="@color/portal_line"
             app:strokeWidth="1dp">
 
             <LinearLayout
@@ -72,20 +92,31 @@
                 android:gravity="center"
                 android:orientation="vertical"
                 android:paddingHorizontal="24dp"
-                android:paddingVertical="32dp">
+                android:paddingVertical="30dp">
 
                 <ImageView
-                    android:layout_width="64dp"
-                    android:layout_height="64dp"
-                    android:contentDescription="@string/app_loading_title"
+                    android:layout_width="56dp"
+                    android:layout_height="56dp"
+                    android:importantForAccessibility="no"
                     android:src="@drawable/logo_emblem" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="18dp"
+                    android:letterSpacing="0.12"
+                    android:text="@string/error_eyebrow"
+                    android:textColor="@color/text_secondary"
+                    android:textSize="11sp"
+                    android:textStyle="bold" />
 
                 <TextView
                     android:id="@+id/tvErrorTitle"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="20dp"
+                    android:layout_marginTop="6dp"
                     android:gravity="center"
+                    android:letterSpacing="-0.02"
                     android:text="@string/error_network_title"
                     android:textColor="@color/text_primary"
                     android:textSize="18sp"
@@ -97,7 +128,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="10dp"
                     android:gravity="center"
-                    android:lineSpacingExtra="4dp"
+                    android:lineSpacingMultiplier="1.4"
                     android:text="@string/error_network_desc"
                     android:textColor="@color/text_secondary"
                     android:textSize="13.5sp" />
@@ -107,23 +138,31 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="24dp"
-                    android:backgroundTint="@color/portal_accent"
-                    android:paddingVertical="13dp"
+                    android:insetTop="0dp"
+                    android:insetBottom="0dp"
+                    android:minHeight="50dp"
                     android:text="@string/action_retry"
                     android:textColor="@color/portal_surface"
                     android:textSize="14sp"
                     android:textStyle="bold"
+                    app:backgroundTint="@color/portal_accent"
                     app:cornerRadius="10dp" />
 
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/btnGoHome"
-                    style="@style/Widget.Material3.Button.TextButton"
-                    android:layout_width="wrap_content"
+                    style="@style/Widget.Material3.Button.OutlinedButton"
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="8dp"
+                    android:insetTop="0dp"
+                    android:insetBottom="0dp"
+                    android:minHeight="46dp"
                     android:text="@string/action_go_home"
-                    android:textColor="@color/portal_accent"
-                    android:textSize="13sp" />
+                    android:textColor="@color/text_body"
+                    android:textSize="13sp"
+                    android:textStyle="bold"
+                    app:cornerRadius="9dp"
+                    app:strokeColor="@color/portal_button_border" />
 
             </LinearLayout>
 
@@ -140,10 +179,10 @@
         android:clickable="true"
         android:focusable="true"
         android:visibility="visible"
-        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintBottom_toTopOf="@id/navBarScrim"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent">
+        app:layout_constraintTop_toBottomOf="@id/statusBarScrim">
 
         <LinearLayout
             android:layout_width="wrap_content"
@@ -162,7 +201,7 @@
                 android:id="@+id/ivLoadingLogo"
                 android:layout_width="84dp"
                 android:layout_height="84dp"
-                android:contentDescription="@string/app_loading_title"
+                android:importantForAccessibility="no"
                 android:src="@drawable/logo_emblem" />
 
             <!-- 영문 아이브로우 -->
@@ -172,7 +211,7 @@
                 android:layout_marginTop="20dp"
                 android:letterSpacing="0.12"
                 android:text="@string/app_loading_eyebrow"
-                android:textColor="@color/portal_eyebrow"
+                android:textColor="@color/text_secondary"
                 android:textSize="11sp"
                 android:textStyle="bold" />
 
@@ -184,7 +223,7 @@
                 android:layout_marginTop="5dp"
                 android:letterSpacing="-0.02"
                 android:text="@string/app_loading_title"
-                android:textColor="@color/portal_primary"
+                android:textColor="@color/text_primary"
                 android:textSize="21sp"
                 android:textStyle="bold" />
 
@@ -197,7 +236,6 @@
                 android:textColor="@color/text_secondary"
                 android:textSize="12sp" />
 
-            <!-- 세련된 로딩 프로그레스 인디케이터 -->
             <com.google.android.material.progressindicator.CircularProgressIndicator
                 android:id="@+id/loadingIndicator"
                 android:layout_width="wrap_content"
@@ -206,10 +244,9 @@
                 android:indeterminate="true"
                 app:indicatorColor="@color/portal_accent"
                 app:indicatorSize="32dp"
-                app:trackColor="@color/portal_card_border"
+                app:trackColor="@color/portal_line"
                 app:trackThickness="3dp" />
 
-            <!-- 하단 힌트 문구 -->
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
@@ -220,18 +257,17 @@
 
         </LinearLayout>
 
-        <!-- 최하단 버전 정보 -->
         <TextView
             android:id="@+id/tvLoadingVersion"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="28dp"
+            android:layout_marginBottom="24dp"
             android:textColor="@color/text_muted"
             android:textSize="11sp"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
-            tools:text="v1.2.1" />
+            tools:text="v1.3.0" />
 
     </androidx.constraintlayout.widget.ConstraintLayout>
 

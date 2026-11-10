@@ -1,21 +1,47 @@
-/* 광주 업무지원포털 Android 하이브리드 최적화 스타일 (v1.2.1) */
+/* 요리광주 업무지원포털 Android 앱 전용 스타일 (v1.3.0)
+ * 운영 포털 화면에 실제 적용된 디자인 언어(흰 헤더, #2563EB 강조색, 회색 중립 팔레트,
+ * 모서리 16/11/10/8px, 회색 아이브로우, Portal 서체)를 그대로 따릅니다.
+ * 앱이 덧입히는 부분은 아래 토큰만 사용합니다.
+ */
+:root {
+    --kp-accent: #2563eb;
+    --kp-accent-strong: #2455ba;
+    --kp-accent-soft: #eff4ff;
+    --kp-bg: #f6f7f9;
+    --kp-surface: #ffffff;
+    --kp-line: #e4e7ec;
+    --kp-btn-line: #d0d5dd;
+    --kp-chip: #f2f4f7;
+    --kp-title: #243e60;
+    --kp-text: #182230;
+    --kp-text-body: #344054;
+    --kp-text-2: #475467;
+    --kp-muted: #667085;
+    --kp-muted-2: #687a92;
+    --kp-faint: #98a2b3;
+    --kp-success: #067647;
+    --kp-success-bg: #ecfdf3;
+    --kp-danger: #b42318;
+    --kp-danger-bg: #fef3f2;
+}
 
-/* 1. 상단 헤더: 제목(브랜드)과 버튼을 모든 모바일 기기에서 동일한 1열(Row)에 중앙 정렬 */
+/* ───────── 1. 포털 상단 헤더 ─────────
+ * 포털은 600px 미만에서 브랜드와 버튼을 두 줄로 나눕니다(헤더 높이 약 125px).
+ * 앱에서는 화면을 넓게 쓰도록 브랜드와 버튼을 한 줄로 배치하되(브랜드는 말줄임), 색·테두리는 포털 그대로 둡니다.
+ */
 .top,
 header.top {
     display: flex !important;
     flex-direction: row !important;
-    flex-wrap: nowrap !important;
+    flex-wrap: wrap !important;
     align-items: center !important;
     justify-content: space-between !important;
-    padding: 10px 14px !important;
     gap: 8px !important;
+    padding: 10px 16px !important;
     box-sizing: border-box !important;
-    background: #123a66 !important;
     width: 100% !important;
 }
 
-/* 모바일 600px 미만에서 포털 기본 스타일이 flex-basis: 100%로 강제 줄바꿈시키는 현상 완벽 방지 */
 .top .brand,
 header.top .brand,
 .top a.brand,
@@ -23,7 +49,7 @@ header.top a.brand {
     display: inline-flex !important;
     flex-direction: row !important;
     align-items: center !important;
-    gap: 6px !important;
+    gap: 8px !important;
     flex: 1 1 auto !important;
     flex-basis: auto !important;
     width: auto !important;
@@ -32,10 +58,6 @@ header.top a.brand {
     padding: 0 !important;
     white-space: nowrap !important;
     text-decoration: none !important;
-    color: #ffffff !important;
-    font-size: 14.5px !important;
-    font-weight: 700 !important;
-    line-height: 1.2 !important;
     overflow: hidden !important;
     text-overflow: ellipsis !important;
 }
@@ -43,14 +65,11 @@ header.top a.brand {
 .top .brand img.brand-logo,
 header.top .brand img.brand-logo,
 .top img.brand-logo {
-    height: 24px !important;
-    max-height: 24px !important;
+    height: 28px !important;
+    max-height: 28px !important;
     width: auto !important;
     object-fit: contain !important;
     flex: none !important;
-    display: inline-block !important;
-    vertical-align: middle !important;
-    filter: brightness(0) invert(1) drop-shadow(0 1px 2px rgba(0, 0, 0, 0.25)) !important;
 }
 
 .top .header-actions,
@@ -68,38 +87,29 @@ header.top .header-actions {
 
 .top .header-actions .header-admin,
 header.top .header-actions .header-admin {
-    padding: 6px 11px !important;
-    height: 32px !important;
-    min-height: 32px !important;
-    border-radius: 8px !important;
-    font-size: 12px !important;
-    font-weight: 600 !important;
-    background: rgba(255, 255, 255, 0.16) !important;
-    border: 1px solid rgba(255, 255, 255, 0.28) !important;
-    color: #ffffff !important;
-    display: inline-flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    gap: 4px !important;
+    min-height: 36px !important;
+    padding: 0 12px !important;
     white-space: nowrap !important;
-    cursor: pointer !important;
 }
 
-/* 2. 흰색 배경 헤더(수강생 증명서발급시스템 등)에서 글자가 흰색으로 묻히지 않도록 글자색 보존 */
-header:not(.top) .brand,
-.login-page header .brand {
-    color: #182230 !important;
-    display: inline-flex !important;
-    align-items: center !important;
-    gap: 8px !important;
+.top .brand,
+header.top .brand {
+    flex: 1 1 0 !important;
 }
 
+/* 앱 헤더에는 [설정]·[관리자] 버튼만 표시합니다.
+ * 관리자 로그인 시 나타나는 개별 관리자 기능 버튼(의무교육 URL, Slack, 공지 푸시, 휴지통, 인사관리)은
+ * 헤더에서 숨기고, [설정] > 관리자 메뉴에서 사용합니다. (요소는 DOM에 남아 있어 메뉴에서 호출 가능)
+ */
+.top .admin-menu,
+header.top .admin-menu {
+    display: none !important;
+}
+
+/* ───────── 2. 흰색 헤더 서브 시스템(증명서발급 등): 브랜드 글자 유지 ───────── */
 header:not(.top) .brand strong,
 .login-page header .brand strong {
-    color: #182230 !important;
     display: inline-block !important;
-    font-size: 16px !important;
-    font-weight: 700 !important;
     visibility: visible !important;
     opacity: 1 !important;
 }
@@ -110,216 +120,240 @@ header:not(.top) .brand img,
     width: auto !important;
     object-fit: contain !important;
     flex: none !important;
-    filter: none !important;
 }
 
-/* 3. 웹 기본 PWA 알림/설치 요소 완벽 숨김 (iPhone 안내 및 구버전 버튼 제거) */
+/* ───────── 3. 앱 안에서는 웹 설치 안내·Web Push 요소 숨김 ─────────
+ * Android WebView는 Web Push를 지원하지 않으므로 웹 구독 UI는 앱에서 동작하지 않습니다.
+ */
 #pwa-install,
 #pwa-install-note,
-#pwa-dialog h3,
+#pwa-dialog h3:not(.kp-section-title),
 #pwa-dialog #pwa-status,
 #pwa-dialog .dialog-note,
 #pwa-dialog #pwa-enable,
 #pwa-dialog #pwa-disable,
 #pwa-dialog #pwa-admin,
 .app-install-prompt,
-[data-install-btn] {
-    display: none !important;
-}
-
-/* 4. #pwa-dialog 자체를 고급 설정 모달로 개편 */
-#pwa-dialog {
-    border: none !important;
-    border-radius: 20px !important;
-    padding: 0 !important;
-    width: min(92vw, 440px) !important;
-    max-height: 86vh !important;
-    box-shadow: 0 20px 48px rgba(18, 58, 102, 0.3) !important;
-    background: #f8fafc !important;
-    color: #1e293b !important;
-    font-family: Pretendard, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
-    overflow: hidden !important;
-}
-
-#pwa-dialog::backdrop {
-    background: rgba(15, 23, 42, 0.6) !important;
-    backdrop-filter: blur(4px) !important;
-}
-
-#pwa-dialog .dialog-top {
-    background: linear-gradient(135deg, #123a66, #1e4a7a) !important;
-    color: #ffffff !important;
-    padding: 16px 20px !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: space-between !important;
-    border-bottom: none !important;
-}
-
-#pwa-dialog #pwa-title {
-    margin: 0 !important;
-    font-size: 17px !important;
-    font-weight: 700 !important;
-    color: #ffffff !important;
-}
-
-#pwa-dialog .dialog-close {
-    background: rgba(255, 255, 255, 0.2) !important;
-    border: none !important;
-    color: #ffffff !important;
-    width: 32px !important;
-    height: 32px !important;
-    border-radius: 50% !important;
-    font-size: 18px !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    cursor: pointer !important;
-}
-
-#pwa-dialog > div:nth-of-type(2) {
-    padding: 16px 18px 24px !important;
-    overflow-y: auto !important;
-    max-height: calc(86vh - 65px) !important;
-    display: flex !important;
-    flex-direction: column !important;
-    gap: 14px !important;
-    box-sizing: border-box !important;
-}
-
-/* 카드 및 섹션 스타일 */
-.modal-card-section {
-    background: #ffffff !important;
-    border: 1px solid #e2e8f0 !important;
-    border-radius: 12px !important;
-    padding: 14px 16px !important;
-    box-shadow: 0 1px 4px rgba(0,0,0,0.03) !important;
-}
-
-.modal-card-title {
-    font-size: 12.5px !important;
-    font-weight: 700 !important;
-    color: #64748b !important;
-    text-transform: uppercase !important;
-    letter-spacing: 0.04em !important;
-    margin: 0 0 10px !important;
-    display: flex !important;
-    align-items: center !important;
-    gap: 6px !important;
-}
-
-/* 그리드 버튼 */
-.modal-grid {
-    display: grid !important;
-    grid-template-columns: repeat(2, 1fr) !important;
-    gap: 8px !important;
-}
-
-.modal-grid-btn {
-    display: flex !important;
-    flex-direction: column !important;
-    padding: 10px 12px !important;
-    background: #f8fafc !important;
-    border: 1px solid #e2e8f0 !important;
-    border-radius: 10px !important;
-    text-decoration: none !important;
-    color: #1e293b !important;
-    transition: all 0.15s !important;
-    cursor: pointer !important;
-    text-align: left !important;
-    box-sizing: border-box !important;
-}
-
-.modal-grid-btn:hover,
-.modal-grid-btn:active {
-    background: #f1f5f9 !important;
-    border-color: #94a3b8 !important;
-}
-
-.modal-grid-btn b {
-    font-size: 13px !important;
-    color: #0f172a !important;
-    display: block !important;
-}
-
-.modal-grid-btn small {
-    font-size: 11px !important;
-    color: #64748b !important;
-    margin-top: 3px !important;
-    display: block !important;
-}
-
-/* 푸시 알림 박스 */
-#pwa-dialog h3 {
-    font-size: 13px !important;
-    font-weight: 700 !important;
-    color: #475569 !important;
-    margin: 0 0 6px !important;
-}
-
-#pwa-dialog #pwa-status {
-    font-size: 13px !important;
-    color: #0284c7 !important;
-    background: #f0f9ff !important;
-    border: 1px solid #bae6fd !important;
-    border-radius: 8px !important;
-    padding: 8px 12px !important;
-    margin: 0 0 10px !important;
-    font-weight: 600 !important;
-}
-
-#pwa-dialog .dialog-note {
-    font-size: 11.5px !important;
-    color: #64748b !important;
-    line-height: 1.5 !important;
-    margin: 0 0 10px !important;
-}
-
-#pwa-dialog #pwa-enable {
-    width: 100% !important;
-    padding: 12px !important;
-    background: #2563eb !important;
-    color: #ffffff !important;
-    border: none !important;
-    border-radius: 9px !important;
-    font-size: 14px !important;
-    font-weight: 700 !important;
-    cursor: pointer !important;
-    margin-bottom: 8px !important;
-}
-
-#pwa-dialog #pwa-disable {
-    width: 100% !important;
-    padding: 10px !important;
-    background: #f1f5f9 !important;
-    color: #475569 !important;
-    border: 1px solid #cbd5e1 !important;
-    border-radius: 8px !important;
-    font-size: 13px !important;
-    font-weight: 600 !important;
-    cursor: pointer !important;
-}
-
-.btn-system-settings {
-    width: 100% !important;
-    padding: 8px 12px !important;
-    background: transparent !important;
-    color: #475569 !important;
-    border: 1px dashed #cbd5e1 !important;
-    border-radius: 8px !important;
-    font-size: 12px !important;
-    cursor: pointer !important;
-    margin-top: 6px !important;
-    display: block !important;
-    text-align: center !important;
-}
-
-
-/* 6. 안드로이드 전용 앱 내부: 웹의 앱 설치 안내 배너 및 모달 다이얼로그 완전 숨김 */
+[data-install-btn],
 #android-banner,
 .android-banner,
 .android-dialog-banner,
 .android-dialog-btn,
 .android-banner-btn {
     display: none !important;
+}
+
+/* ───────── 4. 설정 다이얼로그에 덧붙이는 앱 메뉴 ─────────
+ * 다이얼로그 틀(바텀시트, 제목, 닫기 버튼)은 포털 스타일을 그대로 사용합니다.
+ */
+#portal-extra-menus {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-top: 4px;
+}
+
+#portal-extra-menus [hidden] {
+    display: none !important;
+}
+
+.kp-section {
+    background: var(--kp-surface);
+    border: 1px solid var(--kp-line);
+    border-radius: 16px;
+    padding: 16px;
+}
+
+.kp-eyebrow {
+    margin: 0 0 4px;
+    color: var(--kp-muted);
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.12em;
+}
+
+#pwa-dialog .kp-section-title {
+    display: block;
+    margin: 0 0 12px;
+    color: var(--kp-text);
+    font-size: 16px;
+    font-weight: 700;
+    letter-spacing: -0.03em;
+}
+
+.kp-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+}
+
+.kp-row .kp-section-title {
+    margin: 0 !important;
+}
+
+.kp-desc {
+    margin: 8px 0 12px;
+    color: var(--kp-muted);
+    font-size: 13px;
+    line-height: 1.7;
+}
+
+.kp-note {
+    margin: 12px 0 0;
+    padding: 10px 12px;
+    border-radius: 10px;
+    background: var(--kp-bg);
+    color: var(--kp-muted);
+    font-size: 12px;
+    line-height: 1.6;
+}
+
+.kp-badge {
+    flex: none;
+    padding: 4px 9px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 700;
+    background: var(--kp-chip);
+    color: var(--kp-text-2);
+}
+
+.kp-badge[data-state="on"] {
+    background: var(--kp-success-bg);
+    color: var(--kp-success);
+}
+
+.kp-badge[data-state="off"] {
+    background: var(--kp-danger-bg);
+    color: var(--kp-danger);
+}
+
+/* 버튼: 포털 .button(주) / .small-button(보조) */
+.kp-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+}
+
+.kp-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
+    padding: 0 14px;
+    font: inherit;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    text-decoration: none;
+    white-space: nowrap;
+    flex: none;
+    box-sizing: border-box;
+}
+
+.kp-btn-primary {
+    background: var(--kp-accent);
+    border: 0;
+    border-radius: 10px;
+    color: #ffffff;
+}
+
+.kp-btn-primary:active {
+    background: var(--kp-accent-strong);
+}
+
+.kp-btn-secondary {
+    background: var(--kp-surface);
+    border: 1px solid var(--kp-btn-line);
+    border-radius: 9px;
+    color: var(--kp-text-body);
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.kp-btn-secondary:active {
+    background: var(--kp-bg);
+}
+
+.kp-btn-block {
+    grid-column: 1 / -1;
+}
+
+/* 타일: 포털 패널 안의 보조 링크(연한 파랑 배경)와 동일 */
+.kp-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 8px;
+}
+
+.kp-tile {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    min-height: 60px;
+    padding: 13px 16px;
+    border: 0;
+    border-radius: 11px;
+    background: var(--kp-accent-soft);
+    color: var(--kp-accent-strong);
+    font: inherit;
+    text-align: left;
+    text-decoration: none;
+    cursor: pointer;
+    box-sizing: border-box;
+}
+
+.kp-tile:active {
+    filter: brightness(0.97);
+}
+
+.kp-tile > span:first-child {
+    min-width: 0;
+}
+
+.kp-tile b {
+    display: block;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--kp-accent-strong);
+    overflow-wrap: anywhere;
+}
+
+.kp-tile small {
+    display: block;
+    margin-top: 4px;
+    font-size: 12px;
+    line-height: 1.4;
+    color: var(--kp-muted-2);
+}
+
+.kp-arrow {
+    flex: none;
+    color: var(--kp-accent-strong);
+    font-size: 17px;
+    font-weight: 500;
+}
+
+.kp-tile-danger {
+    background: var(--kp-danger-bg);
+}
+
+.kp-tile-danger b,
+.kp-tile-danger .kp-arrow {
+    color: var(--kp-danger);
+}
+
+.kp-footer {
+    margin: 4px 0 0;
+    text-align: center;
+    font-size: 11px;
+    color: var(--kp-faint);
+}
+
+@media (max-width: 340px) {
+    .kp-actions {
+        grid-template-columns: 1fr;
+    }
 }

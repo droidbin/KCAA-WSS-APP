@@ -7,6 +7,7 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.ActivityNotFoundException
+import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
@@ -18,6 +19,7 @@ import android.os.Bundle
 import android.os.Message
 import android.os.SystemClock
 import android.provider.MediaStore
+import android.provider.Settings
 import android.util.Base64
 import android.view.View
 import android.webkit.CookieManager
@@ -32,18 +34,23 @@ import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
+import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.app.ActivityCompat
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.core.view.ViewCompat
+import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.updateLayoutParams
 import kr.or.kcaa.gwangju.portal.bridge.PortalJsBridge
 import kr.or.kcaa.gwangju.portal.databinding.ActivityMainBinding
 import kr.or.kcaa.gwangju.portal.util.PortalDownloadHelper
+import kr.or.kcaa.gwangju.portal.util.PortalHosts
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -56,11 +63,14 @@ class MainActivity : AppCompatActivity() {
     private var filePathCallback: ValueCallback<Array<Uri>>? = null
     private var cameraPhotoUri: Uri? = null
     private var lastBackPressedTime: Long = 0L
-    private var isInitialPageLoaded: Boolean = false
     private var hasMainFrameError: Boolean = false
     private var loadingStartTime: Long = 0L
     private var isOverlayDismissScheduled: Boolean = false
     private var isOverlayDismissed: Boolean = false
+
+    /** 현재 메인 프레임이 포털 허용 도메인인지 여부 (JS 브릿지 스레드에서 읽음) */
+    @Volatile
+    private var isCurrentPageTrusted: Boolean = false
 
     // 파일/카메라 선택 결과 콜백
     private val fileChooserLauncher = registerForActivityResult(
@@ -88,45 +98,36 @@ class MainActivity : AppCompatActivity() {
         cameraPhotoUri = null
     }
 
-    // 알림 권한 요청 (Android 13+)
+    // 알림 권한 요청 (Android 13+) — 설정 화면에서 사용자가 요청할 때만 실행
     private val notificationPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
-    ) { /* 권한 허용 여부와 무관하게 포털 동작 유지 */ }
+    ) { dispatchNotificationState() }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         val splashScreen = installSplashScreen()
+        enableEdgeToEdge()
         super.onCreate(savedInstanceState)
 
         loadingStartTime = SystemClock.elapsedRealtime()
-
-        // 시스템 스플래시(로고 아이콘만 표시)는 액티비티 준비 즉시 해제하여
-        // 브랜드 로고와 '요리광주 업무지원포털' 정식 명칭이 일체화된 브랜딩 화면으로 즉시 전환
         splashScreen.setKeepOnScreenCondition { false }
 
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        // 상단 시스템 바(상태바) 및 하단 네비게이션 바와의 겹침 방지 (Android 15 Edge-to-Edge 대응)
-        ViewCompat.setOnApplyWindowInsetsListener(binding.root) { v, insets ->
-            val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
-            v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom)
-            insets
-        }
-
-        binding.tvLoadingVersion.text = "v${BuildConfig.VERSION_NAME}"
+        setupSystemBars()
+        binding.tvLoadingVersion.text = getString(R.string.app_version_format, BuildConfig.VERSION_NAME)
 
         createNotificationChannel()
         setupWebView()
         setupSwipeRefresh()
         setupErrorView()
         setupBackNavigation()
-        requestNotificationPermissionIfNeeded()
+        updateSystemBarAppearance()
 
         if (savedInstanceState != null) {
             binding.webView.restoreState(savedInstanceState)
         } else {
-            val targetUrl = resolveInitialUrl(intent)
-            loadPortalUrl(targetUrl)
+            loadPortalUrl(resolveInitialUrl(intent))
         }
     }
 
@@ -137,6 +138,41 @@ class MainActivity : AppCompatActivity() {
             if (deepLinkUrl.startsWith(BuildConfig.PORTAL_BASE_URL)) {
                 loadPortalUrl(deepLinkUrl)
             }
+        }
+    }
+
+    /**
+     * Edge-to-Edge(Android 15+ 강제) 환경에서 상태바/내비게이션 바 영역을 별도 스크림 뷰로 칠합니다.
+     * - 상태바: 포털 헤더와 같은 흰색(웹 화면) / 로딩·오류 화면에서는 페이지 배경색
+     * - 내비게이션 바: 포털 페이지 배경(#F6F7F9)과 같은 색, 아이콘은 항상 어둡게
+     * 키보드(IME)가 올라오면 하단 여백을 키보드 높이만큼 확보합니다.
+     */
+    private fun setupSystemBars() {
+        ViewCompat.setOnApplyWindowInsetsListener(binding.root) { v, insets ->
+            val bars = insets.getInsets(
+                WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout()
+            )
+            val ime = insets.getInsets(WindowInsetsCompat.Type.ime())
+            v.setPadding(bars.left, 0, bars.right, 0)
+            binding.statusBarScrim.updateLayoutParams { height = bars.top }
+            binding.navBarScrim.updateLayoutParams { height = maxOf(bars.bottom, ime.bottom) }
+            insets
+        }
+    }
+
+    /** 로딩/오류 오버레이 노출 여부에 따라 상태바 배경색을 맞춤 (포털이 밝은 테마이므로 아이콘은 항상 어둡게) */
+    private fun updateSystemBarAppearance() {
+        val overlayShown = binding.loadingOverlay.visibility == View.VISIBLE ||
+            binding.errorContainer.visibility == View.VISIBLE
+        binding.statusBarScrim.setBackgroundColor(
+            ContextCompat.getColor(
+                this,
+                if (overlayShown) R.color.portal_background else R.color.portal_surface
+            )
+        )
+        WindowCompat.getInsetsController(window, window.decorView).apply {
+            isAppearanceLightStatusBars = true
+            isAppearanceLightNavigationBars = true
         }
     }
 
@@ -161,29 +197,27 @@ class MainActivity : AppCompatActivity() {
                 setSupportZoom(true)
                 builtInZoomControls = true
                 displayZoomControls = false
-                allowFileAccess = true
+                allowFileAccess = false
                 allowContentAccess = true
 
                 // 포털 서버에서 안드로이드 전용 웹뷰임을 식별할 수 있도록 User-Agent 확장
                 userAgentString = "$userAgentString KCAAWssAndroid/${BuildConfig.VERSION_NAME}"
             }
 
-            // 웹-네이티브 브릿지 연결 (window.AndroidPortalBridge)
+            // 웹-네이티브 브릿지 연결 (window.AndroidPortalBridge) — 포털 허용 도메인에서만 동작
             addJavascriptInterface(
                 PortalJsBridge(
                     context = this@MainActivity,
+                    isTrustedContext = { isCurrentPageTrusted },
                     onReloadRequested = { reload() },
                     onClearCacheRequested = {
                         clearCache(true)
                         clearHistory()
                         loadPortalUrl(BuildConfig.PORTAL_BASE_URL)
                     },
-                    onRequestNotificationPermission = {
-                        requestNotificationPermissionIfNeeded()
-                    },
-                    onSendTestNotification = {
-                        showTestNotification()
-                    }
+                    onRequestNotificationPermission = { requestNotificationPermission() },
+                    onOpenNotificationSettings = { openNotificationSettings() },
+                    onSendTestNotification = { showTestNotification() }
                 ),
                 PortalJsBridge.BRIDGE_NAME
             )
@@ -211,7 +245,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun setupSwipeRefresh() {
         binding.swipeRefreshLayout.setColorSchemeResources(
-            R.color.portal_primary,
+            R.color.portal_accent,
             R.color.portal_accent
         )
         binding.swipeRefreshLayout.setOnRefreshListener {
@@ -284,7 +318,6 @@ class MainActivity : AppCompatActivity() {
 
     private fun loadPortalUrl(url: String) {
         if (!isNetworkConnected()) {
-            isInitialPageLoaded = true
             showErrorView()
             return
         }
@@ -301,9 +334,7 @@ class MainActivity : AppCompatActivity() {
 
         if (remaining > 0) {
             isOverlayDismissScheduled = true
-            binding.loadingOverlay.postDelayed({
-                performFadeOutOverlay()
-            }, remaining)
+            binding.loadingOverlay.postDelayed({ performFadeOutOverlay() }, remaining)
         } else {
             performFadeOutOverlay()
         }
@@ -316,10 +347,11 @@ class MainActivity : AppCompatActivity() {
         isOverlayDismissed = true
         binding.loadingOverlay.animate()
             .alpha(0f)
-            .setDuration(350)
+            .setDuration(300)
             .withEndAction {
                 binding.loadingOverlay.visibility = View.GONE
                 binding.loadingOverlay.alpha = 1f
+                updateSystemBarAppearance()
             }
             .start()
     }
@@ -331,10 +363,12 @@ class MainActivity : AppCompatActivity() {
         binding.errorContainer.visibility = View.VISIBLE
         binding.swipeRefreshLayout.isRefreshing = false
         binding.progressBar.visibility = View.GONE
+        updateSystemBarAppearance()
     }
 
     private fun hideErrorView() {
         binding.errorContainer.visibility = View.GONE
+        updateSystemBarAppearance()
     }
 
     private fun isNetworkConnected(): Boolean {
@@ -344,24 +378,83 @@ class MainActivity : AppCompatActivity() {
         return capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
     }
 
+    // ───────────────────────── 알림 ─────────────────────────
+
     private fun createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(
                 CHANNEL_ID,
-                "요리광주 공지사항 알림",
+                getString(R.string.notif_channel_name),
                 NotificationManager.IMPORTANCE_DEFAULT
             ).apply {
-                description = "요리광주 업무지원포털 공지사항 및 시스템 알림"
+                description = getString(R.string.notif_channel_desc)
             }
-            val manager = getSystemService(NotificationManager::class.java)
-            manager?.createNotificationChannel(channel)
+            getSystemService(NotificationManager::class.java)?.createNotificationChannel(channel)
         }
     }
 
+    private fun areNotificationsEnabled(): Boolean =
+        NotificationManagerCompat.from(this).areNotificationsEnabled()
+
+    /**
+     * 사용자가 설정 화면에서 [알림 켜기]를 눌렀을 때만 호출됩니다.
+     * - 처음 요청이거나 다시 물어볼 수 있으면 시스템 권한 대화상자 표시
+     * - 영구 거부 상태(또는 Android 12 이하에서 꺼짐)면 시스템 알림 설정 화면으로 이동
+     */
+    private fun requestNotificationPermission() {
+        if (areNotificationsEnabled()) {
+            dispatchNotificationState()
+            return
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS)
+            != PackageManager.PERMISSION_GRANTED
+        ) {
+            val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            val askedBefore = prefs.getBoolean(KEY_NOTIF_ASKED, false)
+            val canAskAgain = ActivityCompat.shouldShowRequestPermissionRationale(
+                this, Manifest.permission.POST_NOTIFICATIONS
+            )
+            if (!askedBefore || canAskAgain) {
+                prefs.edit().putBoolean(KEY_NOTIF_ASKED, true).apply()
+                notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                return
+            }
+        }
+        openNotificationSettings()
+    }
+
+    private fun openNotificationSettings() {
+        try {
+            val intent = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).apply {
+                    putExtra(Settings.EXTRA_APP_PACKAGE, packageName)
+                }
+            } else {
+                Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                    data = Uri.fromParts("package", packageName, null)
+                }
+            }
+            startActivity(intent)
+        } catch (e: Exception) {
+            Toast.makeText(this, R.string.msg_notif_settings_failed, Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    /** 웹(설정 모달)에 현재 알림 권한 상태를 이벤트로 전달 */
+    private fun dispatchNotificationState() {
+        if (!isCurrentPageTrusted) return
+        val enabled = areNotificationsEnabled()
+        binding.webView.evaluateJavascript(
+            "window.dispatchEvent(new CustomEvent('portal:notification-state',{detail:{enabled:$enabled}}));",
+            null
+        )
+    }
+
     private fun showTestNotification() {
-        if (!NotificationManagerCompat.from(this).areNotificationsEnabled()) {
-            Toast.makeText(this, "기기 알림 권한이 비활성화되어 있습니다. 알림 켜기를 눌러주세요.", Toast.LENGTH_SHORT).show()
-            requestNotificationPermissionIfNeeded()
+        if (!areNotificationsEnabled()) {
+            Toast.makeText(this, R.string.msg_notif_disabled, Toast.LENGTH_SHORT).show()
+            requestNotificationPermission()
             return
         }
         val intent = Intent(this, MainActivity::class.java).apply {
@@ -375,69 +468,81 @@ class MainActivity : AppCompatActivity() {
         )
 
         val notification = NotificationCompat.Builder(this, CHANNEL_ID)
-            .setSmallIcon(R.mipmap.ic_launcher)
-            .setContentTitle(getString(R.string.app_name))
-            .setContentText("새로운 공지사항 및 포털 알림이 정상적으로 수신됩니다.")
+            .setSmallIcon(R.drawable.ic_stat_notify)
+            .setColor(ContextCompat.getColor(this, R.color.portal_accent))
+            .setContentTitle(getString(R.string.app_loading_title))
+            .setContentText(getString(R.string.notif_test_text))
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
             .setContentIntent(pendingIntent)
             .setAutoCancel(true)
             .build()
 
         try {
-            NotificationManagerCompat.from(this).notify(1001, notification)
-            Toast.makeText(this, "테스트 알림이 전송되었습니다. 상단바를 확인하세요.", Toast.LENGTH_SHORT).show()
+            NotificationManagerCompat.from(this).notify(TEST_NOTIFICATION_ID, notification)
+            Toast.makeText(this, R.string.msg_notif_test_sent, Toast.LENGTH_SHORT).show()
         } catch (e: SecurityException) {
-            Toast.makeText(this, "알림 권한을 허용해 주세요.", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, R.string.msg_notif_disabled, Toast.LENGTH_SHORT).show()
         }
     }
 
-    private fun requestNotificationPermissionIfNeeded() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            if (ContextCompat.checkSelfPermission(
-                    this,
-                    Manifest.permission.POST_NOTIFICATIONS
-                ) != PackageManager.PERMISSION_GRANTED
-            ) {
-                notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-            }
-        }
-    }
+    // ───────────────────────── 링크 처리 ─────────────────────────
 
-    private fun handleExternalScheme(uri: Uri): Boolean {
+    /**
+     * 링크 이동 정책
+     * - 포털 허용 도메인(https): 앱 내부 WebView에서 열기 → false
+     * - 그 외 http(s): 외부 브라우저(또는 카카오톡 등 해당 앱)로 열기 → true
+     * - tel:, mailto:, intent: 등: 외부 앱 실행 → true
+     */
+    private fun handleNavigation(uri: Uri): Boolean {
         val scheme = uri.scheme?.lowercase(Locale.ROOT) ?: return false
-
         if (scheme == "http" || scheme == "https") {
-            return false
+            if (PortalHosts.isTrusted(uri)) return false
+            openExternally(uri)
+            return true
         }
+        return handleExternalScheme(uri, scheme)
+    }
 
-        // tel:, mailto:, sms:, intent: 등 외부 앱 스킴 처리
+    private fun openExternally(uri: Uri) {
+        try {
+            startActivity(Intent(Intent.ACTION_VIEW, uri).addCategory(Intent.CATEGORY_BROWSABLE))
+        } catch (e: ActivityNotFoundException) {
+            Toast.makeText(this, R.string.msg_open_external_failed, Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private fun handleExternalScheme(uri: Uri, scheme: String): Boolean {
         return try {
             if (scheme == "intent") {
-                val intent = Intent.parseUri(uri.toString(), Intent.URI_INTENT_SCHEME)
+                val intent = Intent.parseUri(uri.toString(), Intent.URI_INTENT_SCHEME).apply {
+                    // 외부 페이지가 앱 내부 컴포넌트를 직접 호출하지 못하도록 차단
+                    component = null
+                    selector = null
+                    addCategory(Intent.CATEGORY_BROWSABLE)
+                }
                 if (intent.resolveActivity(packageManager) != null) {
                     startActivity(intent)
-                    true
                 } else {
                     val fallbackUrl = intent.getStringExtra("browser_fallback_url")
                     if (!fallbackUrl.isNullOrBlank()) {
-                        binding.webView.loadUrl(fallbackUrl)
-                        true
+                        val fallbackUri = Uri.parse(fallbackUrl)
+                        if (PortalHosts.isTrusted(fallbackUri)) {
+                            binding.webView.loadUrl(fallbackUrl)
+                        } else {
+                            openExternally(fallbackUri)
+                        }
                     } else {
                         intent.`package`?.let { pkg ->
                             startActivity(
-                                Intent(
-                                    Intent.ACTION_VIEW,
-                                    Uri.parse("market://details?id=$pkg")
-                                )
+                                Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=$pkg"))
                             )
                         }
-                        true
                     }
                 }
             } else {
                 startActivity(Intent(Intent.ACTION_VIEW, uri))
-                true
             }
+            true
         } catch (e: Exception) {
             true
         }
@@ -458,61 +563,39 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private val customCss: String by lazy {
-        try {
-            assets.open("portal_custom.css").bufferedReader().use { it.readText() }
-        } catch (e: Exception) {
-            ""
-        }
+    // ───────────────────────── 포털 스타일/스크립트 주입 ─────────────────────────
+
+    private val customCss: String by lazy { readAsset("portal_custom.css") }
+    private val customJs: String by lazy { readAsset("portal_custom.js") }
+
+    private fun readAsset(name: String): String = try {
+        assets.open(name).bufferedReader().use { it.readText() }
+    } catch (e: Exception) {
+        ""
     }
 
-    private val customJs: String by lazy {
-        try {
-            assets.open("portal_custom.js").bufferedReader().use { it.readText() }
-        } catch (e: Exception) {
-            ""
-        }
+    private fun buildInjectionScript(id: String, tag: String, content: String): String {
+        val encoded = Base64.encodeToString(content.toByteArray(Charsets.UTF_8), Base64.NO_WRAP)
+        return """
+            (function() {
+                var id = '$id';
+                if (document.getElementById(id)) return;
+                var el = document.createElement('$tag');
+                el.id = id;
+                el.textContent = decodeURIComponent(escape(window.atob('$encoded')));
+                (document.head || document.documentElement).appendChild(el);
+            })();
+        """.trimIndent()
     }
 
-    private fun injectPortalEnhancements(view: WebView) {
+    private fun injectPortalEnhancements(view: WebView, url: String?) {
+        // 포털 계열 도메인에만 앱 전용 스타일/스크립트 주입
+        if (!PortalHosts.isTrusted(url)) return
         if (customCss.isNotBlank()) {
-            val encodedCss = Base64.encodeToString(
-                customCss.toByteArray(Charsets.UTF_8),
-                Base64.NO_WRAP
-            )
-            val cssScript = """
-                (function() {
-                    var id = 'portal-custom-css';
-                    if (!document.getElementById(id)) {
-                        var style = document.createElement('style');
-                        style.id = id;
-                        style.type = 'text/css';
-                        style.textContent = decodeURIComponent(escape(window.atob('$encodedCss')));
-                        (document.head || document.documentElement).appendChild(style);
-                    }
-                })();
-            """.trimIndent()
-            view.evaluateJavascript(cssScript, null)
+            view.evaluateJavascript(buildInjectionScript("portal-custom-css", "style", customCss), null)
         }
-
         if (customJs.isNotBlank()) {
-            val encodedJs = Base64.encodeToString(
-                customJs.toByteArray(Charsets.UTF_8),
-                Base64.NO_WRAP
-            )
-            val jsScript = """
-                (function() {
-                    var id = 'portal-custom-js';
-                    if (!document.getElementById(id)) {
-                        var s = document.createElement('script');
-                        s.id = id;
-                        s.type = 'text/javascript';
-                        s.textContent = decodeURIComponent(escape(window.atob('$encodedJs')));
-                        (document.head || document.documentElement).appendChild(s);
-                    }
-                })();
-            """.trimIndent()
-            view.evaluateJavascript(jsScript, null)
+            view.evaluateJavascript(buildInjectionScript("portal-custom-js", "script", customJs), null)
         }
     }
 
@@ -523,17 +606,14 @@ class MainActivity : AppCompatActivity() {
             request: WebResourceRequest
         ): WebResourceResponse? {
             val uri = request.url ?: return super.shouldInterceptRequest(view, request)
-            val path = uri.path?.lowercase(Locale.ROOT) ?: ""
-            // 웹 포털 및 서브 시스템(증명서 발급 등)의 로고 요청을 신규 투명 로고로 로컬 가로채기
-            // CSP(img-src 'self')를 100% 충족하여 깨진 이미지 오류 방지
-            if (path.endsWith("kcaa-symbol.png") || path.contains("kcaa-symbol")) {
+            // 포털 및 서브 시스템의 로고 요청을 앱 내장 투명 로고로 대체 (CSP img-src 'self' 충족)
+            if (PortalHosts.isTrusted(uri) &&
+                (uri.path?.lowercase(Locale.ROOT) ?: "").contains("kcaa-symbol")
+            ) {
                 return try {
                     val stream = assets.open("logo_emblem_clean.png")
-                    val headers = mapOf(
-                        "Access-Control-Allow-Origin" to "*",
-                        "Cache-Control" to "no-cache"
-                    )
-                    WebResourceResponse("image/png", "UTF-8", 200, "OK", headers, stream)
+                    val headers = mapOf("Cache-Control" to "no-cache")
+                    WebResourceResponse("image/png", null, 200, "OK", headers, stream)
                 } catch (e: Exception) {
                     super.shouldInterceptRequest(view, request)
                 }
@@ -546,27 +626,35 @@ class MainActivity : AppCompatActivity() {
             request: WebResourceRequest
         ): Boolean {
             val uri = request.url ?: return false
-            return handleExternalScheme(uri)
+            // iframe 등 하위 프레임의 http(s) 이동은 그대로 둠
+            if (!request.isForMainFrame) {
+                val scheme = uri.scheme?.lowercase(Locale.ROOT)
+                if (scheme == "http" || scheme == "https") return false
+            }
+            return handleNavigation(uri)
         }
 
         override fun onPageStarted(view: WebView, url: String?, favicon: Bitmap?) {
             super.onPageStarted(view, url, favicon)
+            isCurrentPageTrusted = PortalHosts.isTrusted(url)
             hasMainFrameError = false
             binding.progressBar.progress = 0
             binding.progressBar.visibility = View.VISIBLE
         }
 
+        override fun doUpdateVisitedHistory(view: WebView, url: String?, isReload: Boolean) {
+            super.doUpdateVisitedHistory(view, url, isReload)
+            isCurrentPageTrusted = PortalHosts.isTrusted(url)
+        }
+
         override fun onPageCommitVisible(view: WebView, url: String) {
             super.onPageCommitVisible(view, url)
-            if (!hasMainFrameError) {
-                hideLoadingOverlay()
-            }
-            injectPortalEnhancements(view)
+            if (!hasMainFrameError) hideLoadingOverlay()
+            injectPortalEnhancements(view, url)
         }
 
         override fun onPageFinished(view: WebView, url: String?) {
             super.onPageFinished(view, url)
-            isInitialPageLoaded = true
             binding.swipeRefreshLayout.isRefreshing = false
             binding.progressBar.visibility = View.GONE
 
@@ -576,7 +664,7 @@ class MainActivity : AppCompatActivity() {
             if (!hasMainFrameError) {
                 hideErrorView()
                 hideLoadingOverlay()
-                injectPortalEnhancements(view)
+                injectPortalEnhancements(view, url)
             }
         }
 
@@ -588,7 +676,6 @@ class MainActivity : AppCompatActivity() {
             super.onReceivedError(view, request, error)
             if (request.isForMainFrame) {
                 hasMainFrameError = true
-                isInitialPageLoaded = true
                 showErrorView()
             }
         }
@@ -596,9 +683,14 @@ class MainActivity : AppCompatActivity() {
 
     private inner class PortalWebChromeClient : WebChromeClient() {
 
+        // 카메라/마이크 등 웹 권한은 포털 허용 도메인에만 부여
         override fun onPermissionRequest(request: PermissionRequest) {
             runOnUiThread {
-                request.grant(request.resources)
+                if (PortalHosts.isTrusted(request.origin)) {
+                    request.grant(request.resources)
+                } else {
+                    request.deny()
+                }
             }
         }
 
@@ -663,7 +755,7 @@ class MainActivity : AppCompatActivity() {
                     request: WebResourceRequest
                 ): Boolean {
                     val targetUri = request.url
-                    if (!handleExternalScheme(targetUri)) {
+                    if (!handleNavigation(targetUri)) {
                         binding.webView.loadUrl(targetUri.toString())
                     }
                     tempWebView.destroy()
@@ -686,6 +778,8 @@ class MainActivity : AppCompatActivity() {
         super.onResume()
         binding.webView.onResume()
         CookieManager.getInstance().flush()
+        // 시스템 설정에서 알림을 바꾸고 돌아온 경우 설정 모달 상태 갱신
+        dispatchNotificationState()
     }
 
     override fun onPause() {
@@ -706,6 +800,9 @@ class MainActivity : AppCompatActivity() {
 
     companion object {
         const val CHANNEL_ID = "kcaa_portal_notice_channel"
+        private const val TEST_NOTIFICATION_ID = 1001
+        private const val PREFS_NAME = "portal_app_prefs"
+        private const val KEY_NOTIF_ASKED = "notification_permission_asked"
         private const val MIN_BRAND_DISPLAY_DURATION = 2000L // 브랜드 로고 및 정식 명칭 최소 노출 시간 (2.0초)
     }
 }

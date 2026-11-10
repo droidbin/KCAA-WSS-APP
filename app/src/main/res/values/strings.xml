@@ -1,16 +1,27 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">업무지원포털</string>
+    <string name="error_eyebrow">CONNECTION</string>
     <string name="error_network_title">네트워크 연결을 확인할 수 없습니다</string>
     <string name="error_network_desc">인터넷 연결 상태를 확인하신 후 다시 시도해 주세요.</string>
-    <string name="action_retry">다시 연결 시도</string>
+    <string name="action_retry">다시 연결하기 →</string>
     <string name="action_go_home">포털 홈으로</string>
     <string name="msg_back_press_exit">\'뒤로\' 버튼을 한 번 더 누르시면 종료됩니다.</string>
     <string name="msg_download_started">파일 다운로드를 시작합니다.</string>
     <string name="msg_download_failed">다운로드를 시작할 수 없습니다.</string>
+    <string name="msg_open_external_failed">이 링크를 열 수 있는 앱이 없습니다.</string>
     <string name="chooser_file_upload">첨부할 파일 또는 사진 선택</string>
 
+    <!-- 알림 -->
+    <string name="notif_channel_name">요리광주 공지사항 알림</string>
+    <string name="notif_channel_desc">요리광주 업무지원포털 공지사항 및 시스템 알림</string>
+    <string name="notif_test_text">기기 알림이 정상적으로 표시됩니다.</string>
+    <string name="msg_notif_test_sent">테스트 알림을 보냈습니다. 상단 알림창을 확인하세요.</string>
+    <string name="msg_notif_disabled">기기 알림이 꺼져 있습니다. 알림을 허용해 주세요.</string>
+    <string name="msg_notif_settings_failed">기기 알림 설정을 열 수 없습니다.</string>
+
     <!-- 앱 로딩 및 브랜딩 화면 텍스트 -->
+    <string name="app_version_format">v%1$s</string>
     <string name="app_loading_title">요리광주 업무지원포털</string>
     <string name="app_loading_eyebrow">WORK SUPPORT PORTAL</string>
     <string name="app_loading_division">Korea Cooking Art Academy Gwangju Division</string>

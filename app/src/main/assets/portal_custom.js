@@ -1,328 +1,260 @@
 (() => {
   'use strict';
 
-  // 1. 모든 페이지에서 브랜드 로고 적용 (법정의무교육, 포털 홈, 수강생 증명서 시스템 등)
-  function applyLogo() {
+  const bridge = window.AndroidPortalBridge;
+
+  // 빠른 업무 바로가기: 포털 화면에 같은 링크가 있으면 그 주소를 그대로 사용하고,
+  // 없을 때만 아래 기본 주소를 사용합니다. (포털 링크가 바뀌어도 앱이 따라감)
+  const QUICK_LINKS = [
+    { key: 'training', match: 'gwangju-training', title: '법정의무교육', desc: '의무교육 수강하기',
+      fallback: 'https://gwangju-training-migration.pages.dev/' },
+    { key: 'orders', match: '/orders/request', title: '발주요청서 작성', desc: '물품 및 수업자재 신청',
+      fallback: 'https://gwangju-orders-migration.pages.dev/orders/request' },
+    { key: 'certificates', match: 'gwangju-student-certificates', title: '수강생 증명서발급', desc: '증명서 발급 시스템',
+      fallback: 'https://gwangju-student-certificates.pages.dev/certificates' },
+    { key: 'kakao', match: 'pf.kakao.com', title: '카카오톡 1:1 문의', desc: '업무지원포털 상담 채널',
+      fallback: 'https://pf.kakao.com/_XExgxeX/chat' },
+  ];
+  const HR_LINK = { match: 'gwangju-hr', fallback: 'https://gwangju-hr-migration.pages.dev/hr' };
+
+  function appInfo() {
     try {
-      // CSP(img-src 'self')를 엄격히 적용하는 서브 시스템(수강생 증명서발급 등)에서도
-      // 깨진 이미지 없이 로고가 100% 렌더링되도록 /brand/kcaa-symbol.png 경로를 사용합니다.
-      // (안드로이드 WebView의 shouldInterceptRequest가 assets의 신규 투명 로고로 직접 서빙)
-      document.querySelectorAll('.brand, a.brand, header .brand').forEach(brand => {
-        let img = brand.querySelector('img.brand-logo') || brand.querySelector('img');
-        if (!img) {
-          // 법정의무교육 페이지처럼 img 태그가 없는 경우 새로 생성하여 제목 앞에 삽입
-          img = document.createElement('img');
-          img.className = 'brand-logo';
-          img.alt = '로고';
-          img.src = '/brand/kcaa-symbol.png';
-          brand.insertBefore(img, brand.firstChild);
-        } else {
-          img.classList.add('brand-logo');
-          if (!img.src.includes('kcaa-symbol.png')) {
-            img.src = '/brand/kcaa-symbol.png';
-          }
-        }
-      });
-    } catch (e) {
-      console.warn('Logo update error:', e);
+      return JSON.parse(bridge?.getAppInfo?.() || '{}');
+    } catch {
+      return {};
     }
   }
 
-  // 2. 헤더 버튼 레이블 및 레이아웃 정리
+  function resolveHref(link, root) {
+    const found = Array.from(document.querySelectorAll(`a[href*="${link.match}"]`))
+      .find(a => !root.contains(a));
+    return found?.href || link.fallback;
+  }
+
+  function esc(text) {
+    return String(text).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  }
+
+  function tile({ id = '', href = '', title, desc, danger = false, attrs = '' }) {
+    const cls = `kp-tile${danger ? ' kp-tile-danger' : ''}`;
+    // 포털과 같이 링크는 ↗, 앱 내부 동작은 → 로 표시
+    const arrow = href ? '↗' : '→';
+    const body = `<span><b>${esc(title)}</b><small>${esc(desc)}</small></span><span class="kp-arrow" aria-hidden="true">${arrow}</span>`;
+    return href
+      ? `<a class="${cls}" href="${esc(href)}" ${attrs}>${body}</a>`
+      : `<button type="button" class="${cls}" ${id ? `id="${id}"` : ''} ${attrs}>${body}</button>`;
+  }
+
+  // 1. 브랜드 로고 적용 (포털 홈, 법정의무교육, 수강생 증명서 등)
+  //    /brand/kcaa-symbol.png 요청은 앱이 내장 투명 로고로 응답합니다 (CSP img-src 'self' 충족).
+  function applyLogo() {
+    document.querySelectorAll('.brand, a.brand, header .brand').forEach(brand => {
+      let img = brand.querySelector('img.brand-logo') || brand.querySelector('img');
+      if (!img) {
+        img = document.createElement('img');
+        img.className = 'brand-logo';
+        img.alt = '';
+        img.src = '/brand/kcaa-symbol.png';
+        brand.insertBefore(img, brand.firstChild);
+        return;
+      }
+      if (!img.classList.contains('brand-logo')) img.classList.add('brand-logo');
+      if (!img.src.includes('kcaa-symbol.png')) img.src = '/brand/kcaa-symbol.png';
+    });
+  }
+
+  // 2. 헤더 버튼 문구를 모바일 폭에 맞게 정리 (포털과 같이 텍스트만 사용)
   function applyHeaderEnhancements() {
     const pwaOpen = document.getElementById('pwa-open');
-    if (pwaOpen && !pwaOpen.dataset.enhanced) {
-      pwaOpen.innerHTML = '<span style="font-size:13px">⚙️</span> 설정';
-      pwaOpen.setAttribute('title', '포털 및 앱 설정');
-      pwaOpen.dataset.enhanced = 'true';
+    if (pwaOpen && pwaOpen.dataset.enhanced !== '1') {
+      pwaOpen.textContent = '설정';
+      pwaOpen.setAttribute('aria-label', '포털 및 앱 설정');
+      pwaOpen.dataset.enhanced = '1';
+      pwaOpen.addEventListener('click', () => setTimeout(updateNotifUI, 0));
     }
 
     const adminCtrl = document.getElementById('admin-control');
-    if (adminCtrl && !adminCtrl.dataset.enhanced) {
-      if (adminCtrl.textContent.trim() === '관리자 페이지') {
-        adminCtrl.innerHTML = '<span style="font-size:12px">🛡️</span> 관리자';
-      }
-      adminCtrl.dataset.enhanced = 'true';
+    if (adminCtrl && adminCtrl.dataset.enhanced !== '1' && adminCtrl.textContent.trim() === '관리자 페이지') {
+      adminCtrl.textContent = '관리자';
+      adminCtrl.setAttribute('aria-label', '관리자 페이지');
+      adminCtrl.dataset.enhanced = '1';
     }
   }
 
-  // 3. 설정 다이얼로그(#pwa-dialog) 내용 최적화 및 추가 편의 메뉴 주입
+  // 3. 설정 모달에 앱 전용 메뉴 주입
+  function buildExtraMenus(dialog) {
+    const container = document.createElement('div');
+    container.id = 'portal-extra-menus';
+
+    const info = appInfo();
+    const version = info.versionName ? `v${esc(info.versionName)}` : '';
+    const pushNote = info.pushSupported
+      ? ''
+      : '<p class="kp-note">앱의 공지 푸시 수신 기능은 준비 중입니다. 새 공지는 포털 공지사항에서 확인해 주세요.</p>';
+
+    container.innerHTML = `
+      <section class="kp-section" aria-labelledby="kp-notif-title">
+        <p class="kp-eyebrow">NOTIFICATION</p>
+        <div class="kp-row">
+          <h3 class="kp-section-title" id="kp-notif-title">기기 알림</h3>
+          <span class="kp-badge" id="kp-notif-badge" data-state="off">확인 중</span>
+        </div>
+        <p class="kp-desc" id="kp-notif-desc"></p>
+        <div class="kp-actions">
+          <button type="button" class="kp-btn kp-btn-primary" id="kp-notif-allow">알림 허용</button>
+          <button type="button" class="kp-btn kp-btn-secondary" id="kp-notif-test">테스트 알림</button>
+          <button type="button" class="kp-btn kp-btn-secondary kp-btn-block" id="kp-notif-settings">시스템 알림 설정 열기</button>
+        </div>
+        ${pushNote}
+      </section>
+
+      <section class="kp-section" aria-labelledby="kp-app-title">
+        <p class="kp-eyebrow">APP</p>
+        <h3 class="kp-section-title" id="kp-app-title">앱 편의 기능</h3>
+        <div class="kp-grid">
+          ${tile({ id: 'kp-app-reload', title: '포털 새로고침', desc: '최신 데이터 반영' })}
+          ${tile({ id: 'kp-app-clearcache', title: '캐시·세션 정리', desc: '오류 해결 및 재접속' })}
+        </div>
+      </section>
+
+      <section class="kp-section" aria-labelledby="kp-quick-title">
+        <p class="kp-eyebrow">QUICK LINKS</p>
+        <h3 class="kp-section-title" id="kp-quick-title">빠른 업무 바로가기</h3>
+        <div class="kp-grid">
+          ${QUICK_LINKS.map(l => tile({ href: l.fallback, title: l.title, desc: l.desc, attrs: `data-quick="${l.key}"` })).join('')}
+        </div>
+      </section>
+
+      <section class="kp-section" aria-labelledby="kp-admin-title">
+        <p class="kp-eyebrow">ADMIN</p>
+        <h3 class="kp-section-title" id="kp-admin-title">관리자 메뉴</h3>
+        <div class="kp-grid" id="kp-admin-menu" hidden>
+          ${tile({ id: 'kp-menu-edu', title: '의무교육 URL 관리', desc: '수강 링크 설정' })}
+          ${tile({ id: 'kp-menu-slack', title: 'Slack 알림 설정', desc: '지원요청 채널 연동' })}
+          ${tile({ id: 'kp-menu-push', title: '공지 푸시 알림', desc: '발송 현황 및 재전송' })}
+          ${tile({ id: 'kp-menu-trash', title: '게시글 휴지통', desc: '삭제된 게시글 복구' })}
+          ${tile({ href: HR_LINK.fallback, title: '인사관리 시스템', desc: 'HR 시스템 바로가기', attrs: 'data-quick="hr"' })}
+          ${tile({ id: 'kp-menu-logout', title: '관리자 로그아웃', desc: '현재 세션 종료', danger: true })}
+        </div>
+        <div class="kp-row" id="kp-admin-login">
+          <span class="kp-desc" style="margin:0">관리자 인증 후 포털 관리가 가능합니다.</span>
+          <button type="button" class="kp-btn kp-btn-secondary" id="kp-menu-login">로그인</button>
+        </div>
+      </section>
+
+      ${version ? `<p class="kp-footer">요리광주 업무지원포털 Android 앱 ${version}</p>` : ''}
+    `;
+
+    const closeThen = fn => () => { dialog.close(); fn(); };
+    const clickById = id => () => document.getElementById(id)?.click();
+    const on = (id, handler) => container.querySelector(`#${id}`)?.addEventListener('click', handler);
+
+    on('kp-notif-allow', () => bridge?.requestNotificationPermission?.());
+    on('kp-notif-test', () => bridge?.sendTestNotification?.());
+    on('kp-notif-settings', () => bridge?.openNotificationSettings?.());
+    on('kp-app-reload', closeThen(() => bridge?.reloadPortal?.()));
+    on('kp-app-clearcache', () => {
+      if (confirm('임시 캐시와 로그인 세션을 정리하고 포털을 다시 시작할까요?')) {
+        dialog.close();
+        bridge?.clearSessionAndCache?.();
+      }
+    });
+    on('kp-menu-login', closeThen(clickById('admin-control')));
+    on('kp-menu-logout', closeThen(clickById('admin-control')));
+    on('kp-menu-edu', closeThen(clickById('education-links-manage')));
+    on('kp-menu-slack', closeThen(clickById('slack-notifications-manage')));
+    on('kp-menu-push', closeThen(clickById('push-notifications-manage')));
+    on('kp-menu-trash', closeThen(clickById('board-trash')));
+
+    return container;
+  }
+
   function enhanceSettingsDialog() {
     const dialog = document.getElementById('pwa-dialog');
     if (!dialog) return;
 
-    // 제목 변경
     const title = document.getElementById('pwa-title');
-    if (title && title.textContent !== '⚙️ 포털 및 앱 설정') {
-      title.textContent = '⚙️ 포털 및 앱 설정';
-    }
+    if (title && title.textContent !== '포털 및 앱 설정') title.textContent = '포털 및 앱 설정';
 
-    // 앱 설치 버튼 및 안내 문구 숨김
-    const installBtn = document.getElementById('pwa-install');
-    if (installBtn) installBtn.style.setProperty('display', 'none', 'important');
-
-    const installNote = document.getElementById('pwa-install-note');
-    if (installNote) installNote.style.setProperty('display', 'none', 'important');
-
-    const dialogContent = dialog.querySelector('div[style*="padding"]') || dialog.children[1];
-    if (!dialogContent) return;
-
-    // 푸시 알림 버튼 클릭 시 Android 13+ 권한 동시 요청
-    const enableBtn = document.getElementById('pwa-enable');
-    if (enableBtn && !enableBtn.dataset.permissionHooked) {
-      enableBtn.addEventListener('click', () => {
-        window.AndroidPortalBridge?.requestNotificationPermission?.();
-      });
-      enableBtn.dataset.permissionHooked = 'true';
-    }
-
-    // 커스텀 편의 메뉴가 아직 주입되지 않았다면 주입
-    if (!dialog.querySelector('#portal-extra-menus')) {
-      const extraContainer = document.createElement('div');
-      extraContainer.id = 'portal-extra-menus';
-      extraContainer.style.display = 'flex';
-      extraContainer.style.flexDirection = 'column';
-      extraContainer.style.gap = '12px';
-      extraContainer.style.marginTop = '4px';
-
-      // 네이티브 브릿지에서 현재 앱 버전명을 동적으로 조회 (기본값 1.2.1)
-      let currentAppVersion = '1.2.1';
-      try {
-        const infoJson = window.AndroidPortalBridge?.getAppInfo?.();
-        if (infoJson) {
-          const parsed = JSON.parse(infoJson);
-          if (parsed.versionName) currentAppVersion = parsed.versionName;
-        }
-      } catch (e) {
-        // ignore parse error
-      }
-      const adminMenu = document.getElementById('admin-menu');
-      const isAdminLogged = adminMenu && !adminMenu.hidden;
-
-      extraContainer.innerHTML = `
-        <!-- 1. 새 공지사항 푸시 알림 설정 카드 -->
-        <div class="modal-card-section" id="modal-notif-section">
-          <div class="modal-card-title">🔔 공지사항 푸시 알림</div>
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
-            <span style="font-size:13px;font-weight:700;color:#1e293b">기기 알림 상태</span>
-            <span id="notif-status-badge" style="padding:4px 8px;border-radius:6px;font-size:11px;font-weight:700;background:#dcfce7;color:#15803d">● 수신 활성화</span>
-          </div>
-          <p id="notif-desc-text" style="font-size:12px;color:#64748b;margin:0 0 10px;line-height:1.4">
-            새로운 공지사항이 등록되면 기기 알림으로 알려드립니다.
-          </p>
-          <div style="display:flex;gap:6px">
-            <button type="button" class="modal-grid-btn" id="btn-toggle-notif" style="flex:1;text-align:center;align-items:center;background:#2563eb;color:#ffffff;border:none">
-              <b style="color:#ffffff" id="btn-toggle-notif-text">🔔 알림 켜기</b>
-            </button>
-            <button type="button" class="modal-grid-btn" id="btn-test-notif" style="flex:1;text-align:center;align-items:center">
-              <b>📱 테스트 알림</b>
-            </button>
-          </div>
-          <button type="button" class="btn-system-settings" id="btn-open-system-notif" style="margin-top:8px">
-            ⚙️ 기기 시스템 알림 설정 열기
-          </button>
-        </div>
-
-        <!-- 2. 앱 환경 및 편의 기능 -->
-        <div class="modal-card-section">
-          <div class="modal-card-title">📱 앱 편의 기능</div>
-          <div class="modal-grid">
-            <button type="button" class="modal-grid-btn" id="btn-app-reload">
-              <b>🔄 포털 새로고침</b>
-              <small>최신 데이터 즉시 반영</small>
-            </button>
-            <button type="button" class="modal-grid-btn" id="btn-app-clearcache">
-              <b>🧹 캐시 및 세션 정리</b>
-              <small>오류 해결 및 재접속</small>
-            </button>
-          </div>
-        </div>
-
-        <!-- 3. 주요 업무 바로가기 -->
-        <div class="modal-card-section">
-          <div class="modal-card-title">⚡ 빠른 업무 바로가기</div>
-          <div class="modal-grid">
-            <a class="modal-grid-btn" href="https://gwangju-disaster-training.gardengleam1.chatgpt.site" target="_blank" rel="noopener noreferrer">
-              <b>🎓 의무교육 수강</b>
-              <small>법정의무교육 바로가기</small>
-            </a>
-            <a class="modal-grid-btn" href="https://airtable.com/app0isYdrgvvQE0vT/pagAzq8GTVCdcdc4d/form" target="_blank" rel="noopener noreferrer">
-              <b>📋 발주요청서 작성</b>
-              <small>물품 및 수업자재 신청</small>
-            </a>
-            <a class="modal-grid-btn" href="http://qr.kakao.com/talk/f_.aWEGbE0pMpGOMMtkn9NvmEug-" target="_blank" rel="noopener noreferrer">
-              <b>💬 카카오톡 1:1 문의</b>
-              <small>업무지원포털 상담 채널</small>
-            </a>
-            <a class="modal-grid-btn" href="https://gwangju-student-certificates.droidbin.chatgpt.site/certificates" target="_blank" rel="noopener noreferrer">
-              <b>📄 수강생 증명서발급</b>
-              <small>증명서 발급 시스템</small>
-            </a>
-          </div>
-        </div>
-
-        <!-- 4. 관리자 메뉴 -->
-        <div class="modal-card-section">
-          <div class="modal-card-title">🛡️ 관리자 메뉴</div>
-          ${isAdminLogged ? `
-            <div class="modal-grid">
-              <button type="button" class="modal-grid-btn" id="btn-menu-edu">
-                <b>📝 의무교육 URL 관리</b>
-                <small>수강 링크 설정</small>
-              </button>
-              <button type="button" class="modal-grid-btn" id="btn-menu-slack">
-                <b>💬 Slack 알림 설정</b>
-                <small>지원요청 채널 연동</small>
-              </button>
-              <button type="button" class="modal-grid-btn" id="btn-menu-push">
-                <b>📢 공지 푸시 알림</b>
-                <small>발송 현황 및 재전송</small>
-              </button>
-              <button type="button" class="modal-grid-btn" id="btn-menu-trash">
-                <b>🗑️ 게시글 휴지통</b>
-                <small>삭제된 게시글 복구</small>
-              </button>
-              <a class="modal-grid-btn" href="https://gwangju-hr.droidbin.chatgpt.site/hr" target="_blank" rel="noopener noreferrer">
-                <b>👥 인사관리 시스템</b>
-                <small>HR 시스템 바로가기</small>
-              </a>
-              <button type="button" class="modal-grid-btn" id="btn-menu-logout" style="border-color:#fca5a5;background:#fff1f2">
-                <b style="color:#b91c1c">🚪 관리자 로그아웃</b>
-                <small>현재 세션 종료</small>
-              </button>
-            </div>
-          ` : `
-            <div style="display:flex;align-items:center;justify-content:space-between;padding:4px 0">
-              <span style="font-size:12px;color:#64748b">관리자 인증 후 포털 관리가 가능합니다.</span>
-              <button type="button" class="header-admin" id="btn-menu-login" style="padding:6px 12px;font-size:12px;border-radius:6px;cursor:pointer">로그인</button>
-            </div>
-          `}
-        </div>
-
-        <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:6px">
-          요리광주 업무지원포털 Android 전용 앱 v${currentAppVersion}
-        </div>
-      `;
-
-      dialogContent.appendChild(extraContainer);
-
-      // 알림 상태 UI 동적 갱신
-      function updateNotifUI() {
-        const isEnabled = window.AndroidPortalBridge?.isNotificationEnabled?.() ?? true;
-        const badge = extraContainer.querySelector('#notif-status-badge');
-        const desc = extraContainer.querySelector('#notif-desc-text');
-        const btnToggle = extraContainer.querySelector('#btn-toggle-notif');
-        const btnToggleText = extraContainer.querySelector('#btn-toggle-notif-text');
-
-        if (badge && desc && btnToggle && btnToggleText) {
-          if (isEnabled) {
-            badge.textContent = '● 알림 켜짐 (수신 중)';
-            badge.style.background = '#dcfce7';
-            badge.style.color = '#15803d';
-            desc.textContent = '현재 요리광주 업무지원포털의 새로운 공지 알림을 정상 수신하고 있습니다.';
-            btnToggle.style.background = '#f1f5f9';
-            btnToggle.style.border = '1px solid #cbd5e1';
-            btnToggleText.style.color = '#475569';
-            btnToggleText.textContent = '알림 권한 허용됨';
-          } else {
-            badge.textContent = '○ 알림 꺼짐 (차단됨)';
-            badge.style.background = '#fee2e2';
-            badge.style.color = '#b91c1c';
-            desc.textContent = '기기 알림이 꺼져 있습니다. [알림 켜기]를 눌러 공지 알림을 활성화하세요.';
-            btnToggle.style.background = '#2563eb';
-            btnToggle.style.border = 'none';
-            btnToggleText.style.color = '#ffffff';
-            btnToggleText.textContent = '🔔 알림 켜기';
-          }
-        }
-      }
+    let container = dialog.querySelector('#portal-extra-menus');
+    if (!container) {
+      const content = dialog.querySelector('div[style*="padding"]') || dialog.children[1];
+      if (!content) return;
+      container = buildExtraMenus(dialog);
+      content.appendChild(container);
       updateNotifUI();
-
-      // 이벤트 바인딩
-      extraContainer.querySelector('#btn-toggle-notif')?.addEventListener('click', () => {
-        window.AndroidPortalBridge?.requestNotificationPermission?.();
-        setTimeout(updateNotifUI, 1200);
-      });
-
-      extraContainer.querySelector('#btn-test-notif')?.addEventListener('click', () => {
-        window.AndroidPortalBridge?.sendTestNotification?.();
-      });
-
-      extraContainer.querySelector('#btn-open-system-notif')?.addEventListener('click', () => {
-        window.AndroidPortalBridge?.openNotificationSettings?.();
-      });
-
-      extraContainer.querySelector('#btn-app-reload')?.addEventListener('click', () => {
-        dialog.close();
-        window.AndroidPortalBridge?.reloadPortal?.();
-      });
-
-      extraContainer.querySelector('#btn-app-clearcache')?.addEventListener('click', () => {
-        if (confirm('임시 캐시 및 로그인 세션을 정리하고 포털을 다시 시작하시겠습니까?')) {
-          dialog.close();
-          window.AndroidPortalBridge?.clearSessionAndCache?.();
-        }
-      });
-
-      extraContainer.querySelector('#btn-menu-login')?.addEventListener('click', () => {
-        dialog.close();
-        document.getElementById('admin-control')?.click();
-      });
-
-      extraContainer.querySelector('#btn-menu-logout')?.addEventListener('click', () => {
-        dialog.close();
-        document.getElementById('admin-control')?.click();
-      });
-
-      extraContainer.querySelector('#btn-menu-edu')?.addEventListener('click', () => {
-        dialog.close();
-        document.getElementById('education-links-manage')?.click();
-      });
-
-      extraContainer.querySelector('#btn-menu-slack')?.addEventListener('click', () => {
-        dialog.close();
-        document.getElementById('slack-notifications-manage')?.click();
-      });
-
-      extraContainer.querySelector('#btn-menu-push')?.addEventListener('click', () => {
-        dialog.close();
-        document.getElementById('push-notifications-manage')?.click();
-      });
-
-      extraContainer.querySelector('#btn-menu-trash')?.addEventListener('click', () => {
-        dialog.close();
-        document.getElementById('board-trash')?.click();
-      });
     }
+
+    // 관리자 로그인 상태는 포털 #admin-menu 노출 여부를 따라감
+    const adminMenu = document.getElementById('admin-menu');
+    const isAdmin = !!adminMenu && !adminMenu.hidden;
+    const adminGrid = container.querySelector('#kp-admin-menu');
+    const adminLogin = container.querySelector('#kp-admin-login');
+    if (adminGrid && adminGrid.hidden === isAdmin) adminGrid.hidden = !isAdmin;
+    if (adminLogin && adminLogin.hidden !== isAdmin) adminLogin.hidden = isAdmin;
+
+    // 바로가기 주소를 포털 화면의 최신 링크로 동기화
+    container.querySelectorAll('[data-quick]').forEach(a => {
+      const key = a.dataset.quick;
+      const link = key === 'hr' ? HR_LINK : QUICK_LINKS.find(l => l.key === key);
+      if (!link) return;
+      const href = resolveHref(link, container);
+      if (a.href !== href) a.href = href;
+    });
   }
 
-  // 4. 안드로이드 전용 앱 내부에서 웹의 "앱 설치 안내" 배너 및 다이얼로그 노출 방지
+  function updateNotifUI(enabledFromEvent) {
+    const container = document.getElementById('portal-extra-menus');
+    if (!container) return;
+    const enabled = typeof enabledFromEvent === 'boolean'
+      ? enabledFromEvent
+      : !!bridge?.isNotificationEnabled?.();
+
+    const badge = container.querySelector('#kp-notif-badge');
+    const desc = container.querySelector('#kp-notif-desc');
+    const allow = container.querySelector('#kp-notif-allow');
+    if (!badge || !desc || !allow) return;
+
+    badge.dataset.state = enabled ? 'on' : 'off';
+    badge.textContent = enabled ? '허용됨' : '꺼짐';
+    desc.textContent = enabled
+      ? '이 기기에서 업무지원포털 앱의 알림 표시가 허용되어 있습니다.'
+      : '기기 알림이 꺼져 있습니다. [알림 허용]을 눌러 권한을 켜 주세요.';
+    allow.hidden = enabled;
+    allow.style.display = enabled ? 'none' : '';
+  }
+
+  // 네이티브에서 권한 변경 결과 / 설정 화면 복귀 시 전달하는 이벤트
+  window.addEventListener('portal:notification-state', e => updateNotifUI(!!e.detail?.enabled));
+
+  // 4. 앱 안에서 웹의 "앱 설치 안내" 배너·다이얼로그 노출 방지
   function hideAppInstallBanners() {
     try {
-      localStorage.setItem('portal:app-installed', '1');
+      if (localStorage.getItem('portal:app-installed-v2') !== '1') {
+        localStorage.setItem('portal:app-installed', '1');
+        localStorage.setItem('portal:app-installed-v2', '1');
+      }
     } catch {}
 
     const banner = document.getElementById('android-banner');
-    if (banner) {
-      banner.hidden = true;
-      banner.style.setProperty('display', 'none', 'important');
-    }
+    if (banner && !banner.hidden) banner.hidden = true;
 
     const dialogTitle = document.getElementById('dialog-title');
-    if (dialogTitle && (dialogTitle.textContent.includes('앱 설치') || dialogTitle.textContent.includes('안드로이드 앱'))) {
+    if (dialogTitle && /앱 설치|안드로이드 앱/.test(dialogTitle.textContent)) {
       const dialog = document.getElementById('notice-dialog') || document.querySelector('dialog[open]');
-      if (dialog && typeof dialog.close === 'function') {
-        dialog.close();
-      }
+      if (dialog?.open && typeof dialog.close === 'function') dialog.close();
     }
   }
 
-  // 전체 실행 루틴
   function runAll() {
-    hideAppInstallBanners();
-    applyLogo();
-    applyHeaderEnhancements();
-    enhanceSettingsDialog();
+    try {
+      hideAppInstallBanners();
+      applyLogo();
+      applyHeaderEnhancements();
+      enhanceSettingsDialog();
+    } catch (e) {
+      console.warn('[portal-app] enhance error:', e);
+    }
   }
 
   if (document.readyState === 'loading') {
@@ -331,9 +263,20 @@
     runAll();
   }
 
-  // DOM 동적 변화 관찰
-  const observer = new MutationObserver(() => {
-    runAll();
+  // DOM 변경을 한 프레임에 한 번만 처리
+  let scheduled = false;
+  new MutationObserver(() => {
+    if (scheduled) return;
+    scheduled = true;
+    requestAnimationFrame(() => {
+      scheduled = false;
+      runAll();
+    });
+  // hidden 속성 변화(관리자 로그인 시 #admin-menu 노출 등)도 감지
+  }).observe(document.documentElement, {
+    childList: true,
+    subtree: true,
+    attributes: true,
+    attributeFilter: ['hidden'],
   });
-  observer.observe(document.documentElement, { childList: true, subtree: true });
 })();

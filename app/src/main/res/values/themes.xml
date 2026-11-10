@@ -1,12 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- 요리광주 업무지원포털 기본 앱 테마 -->
-    <style name="Theme.GwangjuWorkPortal" parent="Theme.Material3.DayNight.NoActionBar">
+    <!-- 요리광주 업무지원포털 기본 앱 테마 (포털이 라이트 테마 전용이므로 라이트로 고정) -->
+    <style name="Theme.GwangjuWorkPortal" parent="Theme.Material3.Light.NoActionBar">
         <item name="colorPrimary">@color/portal_accent</item>
-        <item name="colorSecondary">@color/portal_primary</item>
-        <item name="android:statusBarColor">@color/portal_primary_dark</item>
-        <item name="android:navigationBarColor">@color/portal_background</item>
-        <item name="android:windowLightStatusBar">false</item>
+        <item name="colorOnPrimary">@color/portal_surface</item>
+        <item name="colorSecondary">@color/portal_title</item>
+        <item name="android:colorBackground">@color/portal_background</item>
+        <item name="android:windowBackground">@color/portal_background</item>
+        <item name="colorSurface">@color/portal_surface</item>
+        <item name="colorOnSurface">@color/text_primary</item>
+        <item name="colorOutline">@color/portal_line</item>
+        <item name="android:windowLightStatusBar">true</item>
         <item name="android:windowLightNavigationBar">true</item>
     </style>
 
