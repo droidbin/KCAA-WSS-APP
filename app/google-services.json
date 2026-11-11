@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "709958882185",
+    "project_id": "kcaa-wss-app",
+    "storage_bucket": "kcaa-wss-app.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:709958882185:android:3e5f0cd5c1605fc23c0758",
+        "android_client_info": {
+          "package_name": "kr.or.kcaa.gwangju.portal"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBLM6RF--4X5Ts-NiB4FJ_QtNqZrlTFPt0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

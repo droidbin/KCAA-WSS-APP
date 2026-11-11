@@ -6,6 +6,12 @@ plugins {
     alias(libs.plugins.kotlin.android)
 }
 
+// Firebase 설정 파일(app/google-services.json)이 있을 때만 플러그인을 적용합니다.
+// 파일 없이 빌드하면 푸시(FCM)만 꺼진 상태로 동작합니다.
+if (file("google-services.json").exists()) {
+    apply(plugin = "com.google.gms.google-services")
+}
+
 val keystorePropertiesFile = rootProject.file("keystore.properties")
 val keystoreProperties = Properties().apply {
     if (keystorePropertiesFile.exists()) {
@@ -25,8 +31,8 @@ android {
         // - 1 단위: 메이저 업데이트 (2.0.0, 3.0.0, ...)
         // - 0.1 단위: 마이너 업데이트 (1.1.0, 1.2.0, ...)
         // - 0.0.1 단위: 버그 픽스, 안정성 패치 (1.1.1, 1.1.2, ...)
-        versionCode = 13
-        versionName = "1.3.0"
+        versionCode = 14
+        versionName = "1.4.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         buildConfigField("String", "PORTAL_BASE_URL", "\"https://gwangju-work-portal.pages.dev/\"")
@@ -101,6 +107,8 @@ dependencies {
     implementation(libs.androidx.webkit)
     implementation(libs.androidx.core.splashscreen)
     implementation(libs.androidx.activity.ktx)
+    implementation(platform(libs.firebase.bom))
+    implementation(libs.firebase.messaging)
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

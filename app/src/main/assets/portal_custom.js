@@ -17,6 +17,22 @@
   ];
   const HR_LINK = { match: 'gwangju-hr', fallback: 'https://gwangju-hr-migration.pages.dev/hr' };
 
+  // 푸시 알림 종류 (네이티브 PortalPush.TYPES 와 같은 키)
+  const PUSH_TYPES = [
+    { key: 'notice', title: '새 공지', desc: '포털에 새 공지가 등록되면 알림' },
+    { key: 'order', title: '발주', desc: '내 발주 처리상태 변경 · 새 발주 접수(관리자)' },
+    { key: 'support', title: '업무요청 답변', desc: '내가 올린 업무요청에 답변이 등록되면 알림' },
+    { key: 'certificate', title: '증명서 수정요청', desc: '고정값 수정요청 승인 결과 · 새 수정요청 접수(통합관리자)' },
+  ];
+
+  function pushState() {
+    try {
+      return JSON.parse(bridge?.getPushState?.() || '{}');
+    } catch {
+      return {};
+    }
+  }
+
   function appInfo() {
     try {
       return JSON.parse(bridge?.getAppInfo?.() || '{}');
@@ -88,9 +104,18 @@
 
     const info = appInfo();
     const version = info.versionName ? `v${esc(info.versionName)}` : '';
-    const pushNote = info.pushSupported
-      ? ''
-      : '<p class="kp-note">앱의 공지 푸시 수신 기능은 준비 중입니다. 새 공지는 포털 공지사항에서 확인해 주세요.</p>';
+    const push = pushState();
+    const pushNote = push.supported
+      ? `<div class="kp-switch-list" role="group" aria-label="받을 알림 선택">
+          ${PUSH_TYPES.map(t => `
+          <button type="button" class="kp-switch" role="switch" data-push-type="${t.key}"
+            aria-checked="${push.types?.[t.key] === false ? 'false' : 'true'}">
+            <span><b>${esc(t.title)}</b><small>${esc(t.desc)}</small></span>
+            <span class="kp-switch-track" aria-hidden="true"></span>
+          </button>`).join('')}
+        </div>
+        <p class="kp-note">발주·업무요청·증명서 알림은 이 앱에서 제출한 요청에 대해서만 전달됩니다. 알림에는 요청 내용이 포함되지 않습니다.</p>`
+      : '<p class="kp-note">이 앱 버전은 푸시 수신을 지원하지 않습니다. 새 공지는 포털 공지사항에서 확인해 주세요.</p>';
 
     container.innerHTML = `
       <section class="kp-section" aria-labelledby="kp-notif-title">
@@ -152,6 +177,13 @@
     on('kp-notif-allow', () => bridge?.requestNotificationPermission?.());
     on('kp-notif-test', () => bridge?.sendTestNotification?.());
     on('kp-notif-settings', () => bridge?.openNotificationSettings?.());
+    container.querySelectorAll('[data-push-type]').forEach(button => {
+      button.addEventListener('click', () => {
+        const enabled = button.getAttribute('aria-checked') !== 'true';
+        button.setAttribute('aria-checked', String(enabled));
+        bridge?.setPushTypeEnabled?.(button.dataset.pushType, enabled);
+      });
+    });
     on('kp-app-reload', closeThen(() => bridge?.reloadPortal?.()));
     on('kp-app-clearcache', () => {
       if (confirm('임시 캐시와 로그인 세션을 정리하고 포털을 다시 시작할까요?')) {
@@ -246,8 +278,19 @@
     }
   }
 
+  // 5. 다이얼로그가 열려 있는 동안 네이티브 당겨서 새로고침 비활성화
+  //    (다이얼로그 안에서 아래로 끌 때 포털이 새로고침되는 현상 방지)
+  let modalOpen = false;
+  function syncModalState() {
+    const open = !!document.querySelector('dialog[open]');
+    if (open === modalOpen) return;
+    modalOpen = open;
+    bridge?.setModalOpen?.(open);
+  }
+
   function runAll() {
     try {
+      syncModalState();
       hideAppInstallBanners();
       applyLogo();
       applyHeaderEnhancements();
@@ -272,11 +315,11 @@
       scheduled = false;
       runAll();
     });
-  // hidden 속성 변화(관리자 로그인 시 #admin-menu 노출 등)도 감지
+  // hidden 속성 변화(관리자 로그인 시 #admin-menu 노출 등)와 dialog 열림/닫힘(open)도 감지
   }).observe(document.documentElement, {
     childList: true,
     subtree: true,
     attributes: true,
-    attributeFilter: ['hidden'],
+    attributeFilter: ['hidden', 'open'],
   });
 })();

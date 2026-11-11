@@ -3,8 +3,6 @@ package kr.or.kcaa.gwangju.portal
 import android.Manifest
 import android.annotation.SuppressLint
 import android.app.Activity
-import android.app.NotificationChannel
-import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.ActivityNotFoundException
 import android.content.Context
@@ -49,6 +47,7 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.updateLayoutParams
 import kr.or.kcaa.gwangju.portal.bridge.PortalJsBridge
 import kr.or.kcaa.gwangju.portal.databinding.ActivityMainBinding
+import kr.or.kcaa.gwangju.portal.push.PortalPush
 import kr.or.kcaa.gwangju.portal.util.PortalDownloadHelper
 import kr.or.kcaa.gwangju.portal.util.PortalHosts
 import java.io.File
@@ -71,6 +70,9 @@ class MainActivity : AppCompatActivity() {
     /** 현재 메인 프레임이 포털 허용 도메인인지 여부 (JS 브릿지 스레드에서 읽음) */
     @Volatile
     private var isCurrentPageTrusted: Boolean = false
+
+    /** 웹 다이얼로그(설정 등)가 열려 있는지 여부 — 열려 있으면 당겨서 새로고침 비활성화 */
+    private var isWebModalOpen: Boolean = false
 
     // 파일/카메라 선택 결과 콜백
     private val fileChooserLauncher = registerForActivityResult(
@@ -101,7 +103,10 @@ class MainActivity : AppCompatActivity() {
     // 알림 권한 요청 (Android 13+) — 설정 화면에서 사용자가 요청할 때만 실행
     private val notificationPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
-    ) { dispatchNotificationState() }
+    ) {
+        dispatchNotificationState()
+        PortalPush.sync(this)
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         val splashScreen = installSplashScreen()
@@ -117,8 +122,10 @@ class MainActivity : AppCompatActivity() {
         setupSystemBars()
         binding.tvLoadingVersion.text = getString(R.string.app_version_format, BuildConfig.VERSION_NAME)
 
-        createNotificationChannel()
+        PortalPush.ensureChannel(this)
         setupWebView()
+        PortalPush.applyDeviceCookie(this)
+        PortalPush.sync(this)
         setupSwipeRefresh()
         setupErrorView()
         setupBackNavigation()
@@ -134,11 +141,7 @@ class MainActivity : AppCompatActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
-        intent.dataString?.let { deepLinkUrl ->
-            if (deepLinkUrl.startsWith(BuildConfig.PORTAL_BASE_URL)) {
-                loadPortalUrl(deepLinkUrl)
-            }
-        }
+        targetUrlFrom(intent)?.let { loadPortalUrl(it) }
     }
 
     /**
@@ -217,15 +220,17 @@ class MainActivity : AppCompatActivity() {
                     },
                     onRequestNotificationPermission = { requestNotificationPermission() },
                     onOpenNotificationSettings = { openNotificationSettings() },
-                    onSendTestNotification = { showTestNotification() }
+                    onSendTestNotification = { showTestNotification() },
+                    onModalStateChanged = { open ->
+                        isWebModalOpen = open
+                        updateSwipeRefreshEnabled()
+                    }
                 ),
                 PortalJsBridge.BRIDGE_NAME
             )
 
             // 스크롤이 최상단에 있을 때만 당겨서 새로고침(SwipeRefresh)이 동작하도록 설정
-            setOnScrollChangeListener { _, _, scrollY, _, _ ->
-                binding.swipeRefreshLayout.isEnabled = (scrollY == 0)
-            }
+            setOnScrollChangeListener { _, _, _, _, _ -> updateSwipeRefreshEnabled() }
 
             // 첨부파일 다운로드 처리
             setDownloadListener { url, userAgent, contentDisposition, mimeType, _ ->
@@ -241,6 +246,11 @@ class MainActivity : AppCompatActivity() {
             webViewClient = PortalWebViewClient()
             webChromeClient = PortalWebChromeClient()
         }
+    }
+
+    /** 페이지가 최상단이고 웹 다이얼로그가 닫혀 있을 때만 당겨서 새로고침 허용 */
+    private fun updateSwipeRefreshEnabled() {
+        binding.swipeRefreshLayout.isEnabled = !isWebModalOpen && binding.webView.scrollY == 0
     }
 
     private fun setupSwipeRefresh() {
@@ -307,14 +317,17 @@ class MainActivity : AppCompatActivity() {
         })
     }
 
-    private fun resolveInitialUrl(intent: Intent?): String {
-        val dataUrl = intent?.dataString
-        return if (!dataUrl.isNullOrBlank() && dataUrl.startsWith(BuildConfig.PORTAL_BASE_URL)) {
-            dataUrl
-        } else {
-            BuildConfig.PORTAL_BASE_URL
-        }
+    /**
+     * 딥링크 또는 푸시 알림이 가리키는 주소. 포털 계열 허용 도메인(https)일 때만 사용합니다.
+     * (알림은 intent data, 시스템이 직접 표시한 FCM 알림은 "url" extra 로 전달)
+     */
+    private fun targetUrlFrom(intent: Intent?): String? {
+        val candidate = intent?.dataString ?: intent?.getStringExtra("url")
+        return candidate?.takeIf { PortalHosts.isTrusted(it) }
     }
+
+    private fun resolveInitialUrl(intent: Intent?): String =
+        targetUrlFrom(intent) ?: BuildConfig.PORTAL_BASE_URL
 
     private fun loadPortalUrl(url: String) {
         if (!isNetworkConnected()) {
@@ -379,19 +392,6 @@ class MainActivity : AppCompatActivity() {
     }
 
     // ───────────────────────── 알림 ─────────────────────────
-
-    private fun createNotificationChannel() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel = NotificationChannel(
-                CHANNEL_ID,
-                getString(R.string.notif_channel_name),
-                NotificationManager.IMPORTANCE_DEFAULT
-            ).apply {
-                description = getString(R.string.notif_channel_desc)
-            }
-            getSystemService(NotificationManager::class.java)?.createNotificationChannel(channel)
-        }
-    }
 
     private fun areNotificationsEnabled(): Boolean =
         NotificationManagerCompat.from(this).areNotificationsEnabled()
@@ -637,6 +637,9 @@ class MainActivity : AppCompatActivity() {
         override fun onPageStarted(view: WebView, url: String?, favicon: Bitmap?) {
             super.onPageStarted(view, url, favicon)
             isCurrentPageTrusted = PortalHosts.isTrusted(url)
+            // 새 페이지에서는 다이얼로그가 닫힌 상태로 시작 (JS 가 다시 알려줌)
+            isWebModalOpen = false
+            updateSwipeRefreshEnabled()
             hasMainFrameError = false
             binding.progressBar.progress = 0
             binding.progressBar.visibility = View.VISIBLE
@@ -780,6 +783,7 @@ class MainActivity : AppCompatActivity() {
         CookieManager.getInstance().flush()
         // 시스템 설정에서 알림을 바꾸고 돌아온 경우 설정 모달 상태 갱신
         dispatchNotificationState()
+        PortalPush.sync(this)
     }
 
     override fun onPause() {
@@ -799,7 +803,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     companion object {
-        const val CHANNEL_ID = "kcaa_portal_notice_channel"
+        const val CHANNEL_ID = PortalPush.CHANNEL_ID
         private const val TEST_NOTIFICATION_ID = 1001
         private const val PREFS_NAME = "portal_app_prefs"
         private const val KEY_NOTIF_ASKED = "notification_permission_asked"

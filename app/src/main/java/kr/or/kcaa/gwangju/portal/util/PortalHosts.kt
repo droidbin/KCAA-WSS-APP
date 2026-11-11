@@ -17,6 +17,9 @@ object PortalHosts {
         "gwangju-hr-migration.pages.dev"           // 인사관리
     )
 
+    /** 허용 도메인 목록 (기기 식별 쿠키 설정 등에 사용) */
+    val hosts: Set<String> get() = TRUSTED_HOSTS
+
     fun isTrusted(uri: Uri?): Boolean {
         if (uri == null) return false
         if (!uri.scheme.equals("https", ignoreCase = true)) return false

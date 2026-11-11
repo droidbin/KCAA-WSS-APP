@@ -12,6 +12,8 @@ activityKtx = "1.9.3"
 junit = "4.13.2"
 junitVersion = "1.2.1"
 espressoCore = "3.6.1"
+firebaseBom = "33.7.0"
+googleServices = "4.4.2"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -22,6 +24,8 @@ androidx-swiperefreshlayout = { group = "androidx.swiperefreshlayout", name = "s
 androidx-webkit = { group = "androidx.webkit", name = "webkit", version.ref = "webkit" }
 androidx-core-splashscreen = { group = "androidx.core", name = "core-splashscreen", version.ref = "splashscreen" }
 androidx-activity-ktx = { group = "androidx.activity", name = "activity-ktx", version.ref = "activityKtx" }
+firebase-bom = { group = "com.google.firebase", name = "firebase-bom", version.ref = "firebaseBom" }
+firebase-messaging = { group = "com.google.firebase", name = "firebase-messaging" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 androidx-junit = { group = "androidx.test.ext", name = "junit", version.ref = "junitVersion" }
 androidx-espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "espressoCore" }
@@ -29,3 +33,4 @@ androidx-espresso-core = { group = "androidx.test.espresso", name = "espresso-co
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
 kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
+google-services = { id = "com.google.gms.google-services", version.ref = "googleServices" }

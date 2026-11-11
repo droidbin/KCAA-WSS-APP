@@ -13,8 +13,9 @@
     <string name="chooser_file_upload">첨부할 파일 또는 사진 선택</string>
 
     <!-- 알림 -->
-    <string name="notif_channel_name">요리광주 공지사항 알림</string>
-    <string name="notif_channel_desc">요리광주 업무지원포털 공지사항 및 시스템 알림</string>
+    <string name="notif_channel_name">요리광주 업무 알림</string>
+    <string name="notif_channel_desc">공지, 발주, 업무요청 답변, 증명서 수정요청 승인 알림</string>
+    <string name="notif_default_text">업무지원포털에서 새 소식을 확인하세요.</string>
     <string name="notif_test_text">기기 알림이 정상적으로 표시됩니다.</string>
     <string name="msg_notif_test_sent">테스트 알림을 보냈습니다. 상단 알림창을 확인하세요.</string>
     <string name="msg_notif_disabled">기기 알림이 꺼져 있습니다. 알림을 허용해 주세요.</string>

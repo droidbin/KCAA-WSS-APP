@@ -52,6 +52,15 @@
             </intent-filter>
         </activity>
 
+        <!-- 포털 서버 푸시(FCM) 수신 -->
+        <service
+            android:name=".push.PortalMessagingService"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.google.firebase.MESSAGING_EVENT" />
+            </intent-filter>
+        </service>
+
         <!-- 카메라 촬영 파일 업로드를 위한 FileProvider -->
         <provider
             android:name="androidx.core.content.FileProvider"

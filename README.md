@@ -1,6 +1,6 @@
-# 요리광주 업무지원포털 모바일 앱 (v1.3.0)
+# 요리광주 업무지원포털 모바일 앱 (v1.4.0)
 
-[![Release](https://img.shields.io/badge/Release-v1.3.0-blue.svg)](https://github.com/droidbin/KCAA-WSS-APP/releases/tag/v1.3.0)
+[![Release](https://img.shields.io/badge/Release-v1.4.0-blue.svg)](https://github.com/droidbin/KCAA-WSS-APP/releases/tag/v1.4.0)
 [![Platform](https://img.shields.io/badge/Platform-Android%208.0+-green.svg)](https://developer.android.com)
 [![Target SDK](https://img.shields.io/badge/Target%20SDK-36-orange.svg)](https://developer.android.com)
 
@@ -16,8 +16,8 @@
 
 | 다운로드 파일 | 파일명 | 설명 |
 | :--- | :--- | :--- |
-| **정식 릴리스 APK** | **[`kcook_wss_v1.3.0.apk`](https://github.com/droidbin/KCAA-WSS-APP/releases/download/v1.3.0/kcook_wss_v1.3.0.apk)** | 사내 배포용 공식 릴리스 서명 설치 파일 |
-| **스토어 배포용 번들** | **[`app-release.aab`](https://github.com/droidbin/KCAA-WSS-APP/releases/download/v1.3.0/app-release.aab)** | Google Play Console 등록용 App Bundle |
+| **정식 릴리스 APK** | **[`kcook_wss_v1.4.0.apk`](https://github.com/droidbin/KCAA-WSS-APP/releases/download/v1.4.0/kcook_wss_v1.4.0.apk)** | 사내 배포용 공식 릴리스 서명 설치 파일 |
+| **스토어 배포용 번들** | **[`app-release.aab`](https://github.com/droidbin/KCAA-WSS-APP/releases/download/v1.4.0/app-release.aab)** | Google Play Console 등록용 App Bundle |
 
 > 📌 **첫 설치 시 안내 (사내 배포 앱)**:
 > 1. 링크 클릭 후 다운로드 진행 시 "유해한 파일일 수 있음" 경고 발생 시 **[무시하고 다운로드]** 선택
@@ -36,20 +36,27 @@
 | **마이너 업데이트** | `0.1` 단위 | `v1.1.0`, `v1.2.0` ... | 주요 기능 추가, UX/UI 디자인 시스템 개편, 로딩 고도화 |
 | **버그픽스 / 패치** | `0.0.1` 단위 | `v1.1.1`, `v1.2.1` ... | UI/UX 버그 수정, 웹뷰 대응 및 긴급 안정성 패치 |
 
-* Android 내부 빌드 번호(`versionCode`)는 스토어 및 기기 업데이트 호환성을 위해 매 릴리스마다 `+1`씩 단조 증가합니다. (현재 버전: `v1.3.0` / versionCode `13`)
+* Android 내부 빌드 번호(`versionCode`)는 스토어 및 기기 업데이트 호환성을 위해 매 릴리스마다 `+1`씩 단조 증가합니다. (현재 버전: `v1.4.0` / versionCode `14`)
 
 ---
 
 ## 🚀 주요 핵심 기능 및 아키텍처
 
-### 0. 포털 디자인 언어 정렬 및 보안 강화 (신규 v1.3.0)
+### 0. 네이티브 푸시 알림 및 설정 화면 스크롤 수정 (신규 v1.4.0)
+- **네이티브 푸시(FCM) 수신**: `push/PortalMessagingService.kt`가 포털 서버의 데이터 메시지(`type`, `title`, `body`, `url`)를 기기 알림으로 표시하고, 알림을 누르면 해당 화면(포털 계열 허용 도메인만)을 앱에서 엶
+- **알림 종류**: 새 공지 / 발주(요청자에게 처리상태 변경, 일반·통합 관리자에게 새 발주 접수) / 업무요청 답변(요청자) / 증명서 고정값 수정요청 승인 결과(요청자). 설정 화면에서 종류별로 켜고 끌 수 있음
+- **기기 연결**: 앱이 만든 무작위 기기 식별값을 포털 계열 도메인에 `kcaa_app_device` 쿠키로 심고, FCM 토큰·수신 설정을 포털 `POST /api/push/device`에 등록(`push/PortalPush.kt`). 서버는 이 쿠키로 "이 앱에서 낸 요청"과 "관리자 로그인 기기"를 구분
+- **Firebase 설정**: `app/google-services.json`이 있을 때만 google-services 플러그인이 적용됨. 파일 없이 빌드하면 푸시만 꺼진 상태로 동작. 서버용 서비스 계정 키는 저장소에 두지 않음
+- **설정 화면 스크롤 수정**: 설정 다이얼로그에서 스크롤하면 뒤의 포털 페이지가 움직이던 문제 수정. 다이얼로그가 열려 있는 동안 당겨서 새로고침도 비활성화
+
+### 0-1. 포털 디자인 언어 정렬 및 보안 강화 (v1.3.0)
 - **운영 포털 디자인 언어로 전면 정렬**: 운영 포털에 실제 적용된 스타일(흰 헤더, 강조색 `#2563EB`, 배경 `#F6F7F9`, 테두리 `#E4E7EC`, 본문 `#182230`, 회색 아이브로우, 모서리 16/11/10px, `Portal`(Pretendard) 서체)에 맞춰 앱 헤더 주입 스타일·설정 메뉴·로딩/오류 화면·상태바를 재작성하고 이모지를 제거
 - **헤더 개선**: 포털과 같은 흰 헤더를 유지하면서 브랜드·버튼을 한 줄로 배치. 관리자 로그인 시 관리자 메뉴가 브랜드를 밀어내던 문제를 수정(아래 줄 가로 스크롤)
 - **시스템 바 정리**: 상태바를 포털 헤더(흰색)·페이지 배경색과 맞추고 아이콘은 어둡게. 하단 내비게이션 바 아이콘이 남색 위에서 보이지 않던 문제와 Android 15에서 키보드가 입력창을 가리던 문제 수정. 라이트 테마 고정
 - **아이콘**: 단색 알림 아이콘(`ic_stat_notify`) 및 Android 13+ 테마 아이콘(monochrome) 추가
 - **도메인 허용 목록**: 포털 계열 도메인(`util/PortalHosts.kt`)만 앱 안에서 열고, JS 브릿지·카메라/마이크 권한·스타일 주입도 해당 도메인에만 허용. 그 외 링크는 외부 브라우저/앱으로 열림
 - **바로가기 링크 자동 동기화**: 설정 모달 바로가기 주소를 포털 화면의 실제 링크에서 읽어와 포털 주소 변경에 자동으로 따라감
-- **알림 흐름 개선**: 앱 실행 시 권한 요청을 하지 않고 설정에서 요청. 영구 거부 시 시스템 설정으로 이동하며, 설정 복귀 시 상태가 즉시 갱신됨. Android WebView는 Web Push를 지원하지 않으므로 공지 푸시 수신은 준비 중으로 안내
+- **알림 흐름 개선**: 앱 실행 시 권한 요청을 하지 않고 설정에서 요청. 영구 거부 시 시스템 설정으로 이동하며, 설정 복귀 시 상태가 즉시 갱신됨.
 
 ### 1. 포털 디자인 언어 완벽 일체화 & 로딩 화면 고도화 (신규 v1.2.0)
 - **포털 통일 테마 적용**: 웹 포털 표준 색상 팔레트(딥 네이비 `#123A66`, 액센트 `#245F9C`, 배경 `#F3F7FC`, 테두리 `#DCE6F1`)를 시스템 상태바, 네비게이션 바, 카드 컴포넌트에 통일
@@ -60,7 +67,7 @@
 - **보안 및 스토리지**: DOM Storage, 세션 쿠키 영속화(`CookieManager.flush()`), 다중 창(`window.open` / `target="_blank"`) 제어
 - **레이아웃 보호**: 사용자 시스템 폰트 크기 변경에 따른 웹 UI 깨짐 방지 (`textZoom = 100`)
 - **Android 15 Edge-to-Edge 지원**: 상태바 및 시스템 네비게이션 바와의 겹침 방지 (`ViewCompat.setOnApplyWindowInsetsListener`)
-- **User-Agent 식별자**: 안드로이드 전용 앱임을 식별할 수 있는 브라우저 에이전트 주입 (`KCAAWssAndroid/1.3.0`)
+- **User-Agent 식별자**: 안드로이드 전용 앱임을 식별할 수 있는 브라우저 에이전트 주입 (`KCAAWssAndroid/1.4.0`)
 
 ### 3. 브랜드 디자인 및 가독성 최적화
 - **브랜드 로고 통일**: 포털 및 서브 시스템의 로고 요청을 앱 내장 엠블럼으로 대체하여 일관되게 표시
@@ -74,7 +81,7 @@
   - 물품 및 수업자재 발주요청서 작성
   - 카카오톡 1:1 업무지원 상담 채널
   - 수강생 증명서 발급 시스템 다이렉트 연동
-- **앱 환경 관리**: 포털 원클릭 새로고침 및 캐시/세션 초기화 기능, 앱 버전(`v1.3.0`) 자동 연동 표시
+- **앱 환경 관리**: 포털 원클릭 새로고침 및 캐시/세션 초기화 기능, 앱 버전(`v1.4.0`) 자동 연동 표시
 
 ### 5. 네이티브 파일 입출력 완벽 연동
 - **파일 업로드 (`WebChromeClient.onShowFileChooser`)**: `<input type="file">` 동작 시 **카메라 즉시 촬영(`FileProvider`)**과 **갤러리/파일 탐색기** 동시 지원
@@ -98,17 +105,17 @@
 
 ### 빌드 명령어
 ```bash
-# 1. 정식 릴리스 APK 빌드 (kcook_wss_v1.3.0.apk 생성)
+# 1. 정식 릴리스 APK 빌드 (kcook_wss_v1.4.0.apk 생성)
 ./gradlew assembleRelease
 
 # 2. Google Play Store 배포용 번들 빌드 (app-release.aab 생성)
 ./gradlew bundleRelease
 
-# 3. 디버그 호환용 APK 빌드 (kcook_wss_v1.3.0_debug.apk 생성)
+# 3. 디버그 호환용 APK 빌드 (kcook_wss_v1.4.0_debug.apk 생성)
 ./gradlew assembleDebug
 ```
 
 출력 파일 경로:
-- Release APK: `app/build/outputs/apk/release/kcook_wss_v1.3.0.apk`
+- Release APK: `app/build/outputs/apk/release/kcook_wss_v1.4.0.apk`
 - Release AAB: `app/build/outputs/bundle/release/app-release.aab`
-- Debug APK: `app/build/outputs/apk/debug/kcook_wss_v1.3.0_debug.apk`
+- Debug APK: `app/build/outputs/apk/debug/kcook_wss_v1.4.0_debug.apk`

@@ -9,6 +9,7 @@ import android.webkit.JavascriptInterface
 import android.widget.Toast
 import androidx.core.app.NotificationManagerCompat
 import kr.or.kcaa.gwangju.portal.BuildConfig
+import kr.or.kcaa.gwangju.portal.push.PortalPush
 import org.json.JSONObject
 
 /**
@@ -24,7 +25,8 @@ class PortalJsBridge(
     private val onClearCacheRequested: () -> Unit,
     private val onRequestNotificationPermission: () -> Unit,
     private val onOpenNotificationSettings: () -> Unit,
-    private val onSendTestNotification: () -> Unit
+    private val onSendTestNotification: () -> Unit,
+    private val onModalStateChanged: (Boolean) -> Unit
 ) {
     private val mainHandler = Handler(Looper.getMainLooper())
 
@@ -43,8 +45,8 @@ class PortalJsBridge(
             put("sdkInt", Build.VERSION.SDK_INT)
             put("isNativeApp", true)
             put("notificationsEnabled", isNotificationEnabled())
-            // 앱은 아직 네이티브 푸시(FCM) 수신을 지원하지 않습니다. 웹뷰는 Web Push 미지원.
-            put("pushSupported", false)
+            // 네이티브 푸시(FCM): Firebase 설정이 포함된 빌드에서만 true. 웹뷰는 Web Push 미지원.
+            put("pushSupported", PortalPush.isAvailable(context))
         }.toString()
     }
 
@@ -55,6 +57,18 @@ class PortalJsBridge(
     fun isNotificationEnabled(): Boolean {
         if (!isTrustedContext()) return false
         return NotificationManagerCompat.from(context).areNotificationsEnabled()
+    }
+
+    /** 푸시 지원 여부와 알림 종류별 수신 설정(JSON) */
+    @JavascriptInterface
+    fun getPushState(): String {
+        if (!isTrustedContext()) return "{}"
+        return PortalPush.stateJson(context)
+    }
+
+    @JavascriptInterface
+    fun setPushTypeEnabled(type: String, enabled: Boolean) = runTrusted {
+        PortalPush.setTypeEnabled(context, type, enabled)
     }
 
     @JavascriptInterface
@@ -71,14 +85,21 @@ class PortalJsBridge(
         Toast.makeText(context, message.take(120), Toast.LENGTH_SHORT).show()
     }
 
+    /** 웹 다이얼로그(설정, 게시글 등) 열림/닫힘 상태 전달 — 열려 있는 동안 당겨서 새로고침을 끕니다. */
     @JavascriptInterface
-    fun reloadPortal() = runTrusted { onReloadRequested() }
+    fun setModalOpen(open: Boolean) = runTrusted { onModalStateChanged(open) }
+
+    @JavascriptInterface
+    fun reloadPortal()= runTrusted { onReloadRequested() }
 
     @JavascriptInterface
     fun clearSessionAndCache() = runTrusted {
-        CookieManager.getInstance().removeAllCookies(null)
-        CookieManager.getInstance().flush()
-        onClearCacheRequested()
+        CookieManager.getInstance().removeAllCookies {
+            CookieManager.getInstance().flush()
+            // 기기 식별 쿠키는 로그인 정보가 아니므로 다시 심습니다.
+            PortalPush.applyDeviceCookie(context)
+            onClearCacheRequested()
+        }
     }
 
     companion object {
