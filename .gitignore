@@ -12,6 +12,8 @@ app/build
 *.jks
 *.keystore
 keystore.properties
+# Firebase 설정 파일은 공개 저장소에 올리지 않습니다 (빌드하는 PC의 app/ 폴더에 직접 둠)
+google-services.json
 # Firebase 서버용 서비스 계정 키는 저장소에 두지 않습니다
 *service-account*.json
 *firebase-adminsdk*.json
