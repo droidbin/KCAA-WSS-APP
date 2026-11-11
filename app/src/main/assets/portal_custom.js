@@ -17,13 +17,34 @@
   ];
   const HR_LINK = { match: 'gwangju-hr', fallback: 'https://gwangju-hr-migration.pages.dev/hr' };
 
-  // 푸시 알림 종류 (네이티브 PortalPush.TYPES 와 같은 키)
-  const PUSH_TYPES = [
-    { key: 'notice', title: '새 공지', desc: '포털에 새 공지가 등록되면 알림' },
-    { key: 'order', title: '발주', desc: '내 발주 처리상태 변경 · 새 발주 접수(관리자)' },
-    { key: 'support', title: '업무요청 답변', desc: '내가 올린 업무요청에 답변이 등록되면 알림' },
-    { key: 'certificate', title: '증명서 수정요청', desc: '고정값 수정요청 승인 결과 · 새 수정요청 접수(통합관리자)' },
+  // 권한 계층: 일반직원(staff) < 일반관리자(admin) < 통합관리자(super_admin)
+  const ROLE_LEVEL = { staff: 0, admin: 1, super_admin: 2 };
+  const hasPermission = (userRole, requiredRole) =>
+    (ROLE_LEVEL[userRole] ?? 0) >= (ROLE_LEVEL[requiredRole] ?? Infinity);
+
+  // 푸시 알림 종류와 볼 수 있는 최소 권한 (네이티브 PortalPush.TYPE_MIN_ROLE 과 같은 값)
+  const PUSH_SECTIONS = [
+    { key: 'work', title: '업무 알림', items: [
+      { key: 'notice', minRole: 'staff', title: '새 공지', desc: '포털에 새 공지가 등록되면 알림' },
+      { key: 'order', minRole: 'staff', title: '발주 처리상태', desc: '내 발주의 처리상태가 바뀌면 알림' },
+      { key: 'support', minRole: 'staff', title: '업무요청 답변', desc: '내 업무요청에 답변이 등록되면 알림' },
+      { key: 'certificate', minRole: 'staff', title: '증명서 수정요청 결과', desc: '내 수정요청이 승인·반려되면 알림' },
+    ] },
+    { key: 'admin', title: '관리자 알림', items: [
+      { key: 'orderAdmin', minRole: 'admin', title: '새 발주 접수', desc: '새 발주요청이 접수되면 알림' },
+      { key: 'certificateAdmin', minRole: 'super_admin', title: '새 증명서 수정요청', desc: '증명서 수정요청이 접수되면 알림' },
+    ] },
   ];
+  const PUSH_ITEMS = PUSH_SECTIONS.flatMap(section => section.items);
+
+  // 권한에 맞는 항목만 남기고, 항목이 하나도 없는 구역은 제외
+  const visibleSections = role => PUSH_SECTIONS
+    .map(section => ({ ...section, items: section.items.filter(item => hasPermission(role, item.minRole)) }))
+    .filter(section => section.items.length > 0);
+
+  let currentRole = 'staff';   // 포털 세션으로 확인되기 전까지는 가장 낮은 권한
+  let lastAdminShown;          // 마지막으로 본 포털 관리자 메뉴 노출 여부
+  let pushPending = null;      // 저장 결과를 기다리는 스위치 { type, timer }
 
   function pushState() {
     try {
@@ -104,19 +125,6 @@
 
     const info = appInfo();
     const version = info.versionName ? `v${esc(info.versionName)}` : '';
-    const push = pushState();
-    const pushNote = push.supported
-      ? `<div class="kp-switch-list" role="group" aria-label="받을 알림 선택">
-          ${PUSH_TYPES.map(t => `
-          <button type="button" class="kp-switch" role="switch" data-push-type="${t.key}"
-            aria-checked="${push.types?.[t.key] === false ? 'false' : 'true'}">
-            <span><b>${esc(t.title)}</b><small>${esc(t.desc)}</small></span>
-            <span class="kp-switch-track" aria-hidden="true"></span>
-          </button>`).join('')}
-        </div>
-        ${push.serverReady === false ? '<p class="kp-note">포털 서버의 알림 발송이 아직 준비되지 않아 알림이 오지 않을 수 있습니다. 관리자에게 문의해 주세요.</p>' : ''}
-        <p class="kp-note">발주·업무요청·증명서 알림은 이 앱에서 제출한 요청에 대해서만 전달됩니다. 알림에는 요청 내용이 포함되지 않습니다.</p>`
-      : '<p class="kp-note">이 앱 버전은 푸시 수신을 지원하지 않습니다. 새 공지는 포털 공지사항에서 확인해 주세요.</p>';
 
     container.innerHTML = `
       <section class="kp-section" aria-labelledby="kp-notif-title">
@@ -131,7 +139,7 @@
           <button type="button" class="kp-btn kp-btn-secondary" id="kp-notif-test">테스트 알림</button>
           <button type="button" class="kp-btn kp-btn-secondary kp-btn-block" id="kp-notif-settings">시스템 알림 설정 열기</button>
         </div>
-        ${pushNote}
+        <div id="kp-push-area"></div>
       </section>
 
       <section class="kp-section" aria-labelledby="kp-app-title">
@@ -178,13 +186,6 @@
     on('kp-notif-allow', () => bridge?.requestNotificationPermission?.());
     on('kp-notif-test', () => bridge?.sendTestNotification?.());
     on('kp-notif-settings', () => bridge?.openNotificationSettings?.());
-    container.querySelectorAll('[data-push-type]').forEach(button => {
-      button.addEventListener('click', () => {
-        const enabled = button.getAttribute('aria-checked') !== 'true';
-        button.setAttribute('aria-checked', String(enabled));
-        bridge?.setPushTypeEnabled?.(button.dataset.pushType, enabled);
-      });
-    });
     on('kp-app-reload', closeThen(() => bridge?.reloadPortal?.()));
     on('kp-app-clearcache', () => {
       if (confirm('임시 캐시와 로그인 세션을 정리하고 포털을 다시 시작할까요?')) {
@@ -202,6 +203,89 @@
     return container;
   }
 
+  // 알림 종류 스위치: 현재 권한으로 볼 수 있는 항목만 DOM 에 만듭니다.
+  function renderPushSwitches() {
+    const area = document.getElementById('kp-push-area');
+    if (!area) return;
+    if (pushPending) { clearTimeout(pushPending.timer); pushPending = null; }
+
+    const push = pushState();
+    if (!push.supported) {
+      area.innerHTML = '<p class="kp-note">이 앱 버전은 푸시 수신을 지원하지 않습니다. 새 공지는 포털 공지사항에서 확인해 주세요.</p>';
+      return;
+    }
+    const sections = visibleSections(currentRole);
+    area.innerHTML = sections.map(section => `
+      <div class="kp-switch-group" role="group" aria-labelledby="kp-push-${section.key}">
+        <h4 class="kp-switch-group-title" id="kp-push-${section.key}">${esc(section.title)}</h4>
+        <div class="kp-switch-list">
+          ${section.items.map(item => `
+          <button type="button" class="kp-switch" role="switch" data-push-type="${item.key}"
+            aria-checked="${push.types?.[item.key] === false ? 'false' : 'true'}">
+            <span class="kp-switch-label"><b>${esc(item.title)}</b><small>${esc(item.desc)}</small></span>
+            <span class="kp-switch-track" aria-hidden="true"></span>
+          </button>`).join('')}
+        </div>
+      </div>`).join('') + `
+      ${push.serverReady === false ? '<p class="kp-note">포털 서버의 알림 발송이 아직 준비되지 않아 알림이 오지 않을 수 있습니다. 관리자에게 문의해 주세요.</p>' : ''}
+      <p class="kp-note">발주·업무요청·증명서 알림은 이 앱에서 제출한 요청에 대해서만 전달됩니다. 알림에는 요청 내용이 포함되지 않습니다.${
+        sections.some(section => section.key === 'admin') ? ' 관리자 알림은 관리자로 로그인한 기기에만 전달됩니다.' : ''}</p>`;
+    area.querySelectorAll('[data-push-type]').forEach(button => {
+      button.addEventListener('click', () => togglePushType(button));
+    });
+  }
+
+  function setPushBusy(busy) {
+    const area = document.getElementById('kp-push-area');
+    if (!area) return;
+    area.toggleAttribute('aria-busy', busy);
+    area.querySelectorAll('[data-push-type]').forEach(button => { button.disabled = busy; });
+  }
+
+  // 누르면 바로 바뀐 상태를 보여 주고, 저장 결과는 네이티브 이벤트(portal:push-type-result)로 받습니다.
+  function togglePushType(button) {
+    const type = button.dataset.pushType;
+    const item = PUSH_ITEMS.find(i => i.key === type);
+    if (pushPending || !item || !hasPermission(currentRole, item.minRole)) return;
+    const enabled = button.getAttribute('aria-checked') !== 'true';
+    button.setAttribute('aria-checked', String(enabled));
+    if (!bridge?.setPushTypeEnabled) return;
+    pushPending = { type, timer: setTimeout(() => finishPushToggle({ type, ok: false }), 30000) };
+    setPushBusy(true);
+    bridge.setPushTypeEnabled(type, enabled);
+  }
+
+  function finishPushToggle(detail) {
+    if (!pushPending || pushPending.type !== detail.type) return;
+    clearTimeout(pushPending.timer);
+    pushPending = null;
+    setPushBusy(false);
+    if (detail.ok) return;
+    // 저장 실패: 기기에 실제로 저장되어 있는 값으로 되돌립니다.
+    const stored = pushState().types?.[detail.type] !== false;
+    document.querySelector(`#kp-push-area [data-push-type="${detail.type}"]`)
+      ?.setAttribute('aria-checked', String(stored));
+    bridge?.showToast?.('알림 설정을 저장하지 못했습니다. 네트워크 연결을 확인한 뒤 다시 시도해 주세요.');
+  }
+
+  window.addEventListener('portal:push-type-result', e => finishPushToggle(e.detail || {}));
+
+  // 포털 관리자 세션으로 권한을 확인합니다. 확인하지 못하면 현재 권한을 그대로 둡니다.
+  async function refreshRole() {
+    let role;
+    try {
+      const response = await fetch('/api/admin/session', { cache: 'no-store', credentials: 'same-origin' });
+      const session = await response.json();
+      role = session.authorized !== true ? 'staff' : session.role === 'unified' ? 'super_admin' : 'admin';
+    } catch {
+      return;
+    }
+    bridge?.setPushRole?.(role);
+    if (role === currentRole) return;
+    currentRole = role;
+    renderPushSwitches();
+  }
+
   function enhanceSettingsDialog() {
     const dialog = document.getElementById('pwa-dialog');
     if (!dialog) return;
@@ -215,12 +299,18 @@
       if (!content) return;
       container = buildExtraMenus(dialog);
       content.appendChild(container);
+      renderPushSwitches();
       updateNotifUI();
     }
 
     // 관리자 로그인 상태는 포털 #admin-menu 노출 여부를 따라감
     const adminMenu = document.getElementById('admin-menu');
     const isAdmin = !!adminMenu && !adminMenu.hidden;
+    // 첫 실행과 로그인·로그아웃 때 권한을 다시 확인
+    if (isAdmin !== lastAdminShown) {
+      lastAdminShown = isAdmin;
+      refreshRole();
+    }
     const adminGrid = container.querySelector('#kp-admin-menu');
     const adminLogin = container.querySelector('#kp-admin-login');
     if (adminGrid && adminGrid.hidden === isAdmin) adminGrid.hidden = !isAdmin;

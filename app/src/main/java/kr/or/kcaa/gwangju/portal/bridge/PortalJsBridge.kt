@@ -26,7 +26,8 @@ class PortalJsBridge(
     private val onRequestNotificationPermission: () -> Unit,
     private val onOpenNotificationSettings: () -> Unit,
     private val onSendTestNotification: () -> Unit,
-    private val onModalStateChanged: (Boolean) -> Unit
+    private val onModalStateChanged: (Boolean) -> Unit,
+    private val onPushTypeResult: (type: String, enabled: Boolean, saved: Boolean) -> Unit
 ) {
     private val mainHandler = Handler(Looper.getMainLooper())
 
@@ -68,8 +69,15 @@ class PortalJsBridge(
 
     @JavascriptInterface
     fun setPushTypeEnabled(type: String, enabled: Boolean) = runTrusted {
-        PortalPush.setTypeEnabled(context, type, enabled)
+        // 저장 결과(성공 여부와 실제 저장된 값)를 웹에 돌려줘, 실패하면 스위치를 되돌리게 합니다.
+        PortalPush.setTypeEnabled(context, type, enabled) { saved ->
+            mainHandler.post { onPushTypeResult(type, PortalPush.isTypeEnabled(context, type), saved) }
+        }
     }
+
+    /** 포털 세션으로 확인한 권한(staff / admin / super_admin) — 권한 밖의 알림 종류는 서버에 보내지 않습니다. */
+    @JavascriptInterface
+    fun setPushRole(role: String) = runTrusted { PortalPush.setRole(context, role) }
 
     @JavascriptInterface
     fun sendTestNotification() = runTrusted { onSendTestNotification() }

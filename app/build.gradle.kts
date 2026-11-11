@@ -31,8 +31,8 @@ android {
         // - 1 단위: 메이저 업데이트 (2.0.0, 3.0.0, ...)
         // - 0.1 단위: 마이너 업데이트 (1.1.0, 1.2.0, ...)
         // - 0.0.1 단위: 버그 픽스, 안정성 패치 (1.1.1, 1.1.2, ...)
-        versionCode = 14
-        versionName = "1.4.0"
+        versionCode = 15
+        versionName = "1.5.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         buildConfigField("String", "PORTAL_BASE_URL", "\"https://gwangju-work-portal.pages.dev/\"")

@@ -238,7 +238,8 @@ class MainActivity : AppCompatActivity() {
                     onModalStateChanged = { open ->
                         isWebModalOpen = open
                         updateSwipeRefreshEnabled()
-                    }
+                    },
+                    onPushTypeResult = { type, enabled, saved -> dispatchPushTypeResult(type, enabled, saved) }
                 ),
                 PortalJsBridge.BRIDGE_NAME
             )
@@ -461,6 +462,16 @@ class MainActivity : AppCompatActivity() {
         val enabled = areNotificationsEnabled()
         binding.webView.evaluateJavascript(
             "window.dispatchEvent(new CustomEvent('portal:notification-state',{detail:{enabled:$enabled}}));",
+            null
+        )
+    }
+
+    /** 웹(설정 모달)에 알림 종류 스위치의 저장 결과를 전달 — 실패하면 웹이 스위치를 되돌립니다. */
+    private fun dispatchPushTypeResult(type: String, enabled: Boolean, saved: Boolean) {
+        if (!isCurrentPageTrusted || type !in PortalPush.TYPES || isDestroyed) return
+        binding.webView.evaluateJavascript(
+            "window.dispatchEvent(new CustomEvent('portal:push-type-result'," +
+                "{detail:{type:'$type',enabled:$enabled,ok:$saved}}));",
             null
         )
     }

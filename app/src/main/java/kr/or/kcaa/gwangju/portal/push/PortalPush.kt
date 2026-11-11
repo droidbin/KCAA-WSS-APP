@@ -32,8 +32,27 @@ object PortalPush {
     const val CHANNEL_ID = "kcaa_portal_notice_channel"
     const val DEVICE_COOKIE = "kcaa_app_device"
 
-    /** 알림 종류: 공지 / 발주(접수·처리상태) / 업무요청 답변 / 증명서 수정요청 승인 */
-    val TYPES = listOf("notice", "order", "support", "certificate")
+    /** 권한 계층: 일반직원 < 일반관리자 < 통합관리자 */
+    private val ROLE_LEVEL = mapOf("staff" to 0, "admin" to 1, "super_admin" to 2)
+    private const val DEFAULT_ROLE = "staff"
+
+    /**
+     * 알림 종류와 그 설정을 다룰 수 있는 최소 권한 (portal_custom.js 의 PUSH_SECTIONS 와 같은 값).
+     * 공지 / 발주 처리상태 / 업무요청 답변 / 증명서 수정요청 결과 / 새 발주 접수 / 새 증명서 수정요청
+     */
+    private val TYPE_MIN_ROLE = linkedMapOf(
+        "notice" to "staff",
+        "order" to "staff",
+        "support" to "staff",
+        "certificate" to "staff",
+        "orderAdmin" to "admin",
+        "certificateAdmin" to "super_admin"
+    )
+
+    val TYPES: List<String> = TYPE_MIN_ROLE.keys.toList()
+
+    fun hasPermission(userRole: String, requiredRole: String): Boolean =
+        (ROLE_LEVEL[userRole] ?: 0) >= (ROLE_LEVEL[requiredRole] ?: Int.MAX_VALUE)
 
     private const val TAG = "PortalPush"
     private const val PREFS = "portal_push_prefs"
@@ -42,6 +61,7 @@ object PortalPush {
     private const val KEY_SYNC_HASH = "sync_hash"
     private const val KEY_SYNC_AT = "sync_at"
     private const val KEY_SERVER_READY = "server_ready"
+    private const val KEY_ROLE = "role"
     private const val KEY_TYPE_PREFIX = "type_"
     private const val RESYNC_INTERVAL_MS = 7L * 24 * 60 * 60 * 1000
     private const val REGISTER_PATH = "api/push/device"
@@ -92,19 +112,47 @@ object PortalPush {
     fun isTypeEnabled(context: Context, type: String): Boolean =
         prefs(context).getBoolean(KEY_TYPE_PREFIX + type, true)
 
-    fun setTypeEnabled(context: Context, type: String, enabled: Boolean) {
-        if (type !in TYPES) return
-        prefs(context).edit().putBoolean(KEY_TYPE_PREFIX + type, enabled).apply()
+    /** 포털 세션으로 확인된 이 기기 사용자의 권한 (설정 화면이 알려 줌) */
+    fun role(context: Context): String =
+        prefs(context).getString(KEY_ROLE, DEFAULT_ROLE)?.takeIf { it in ROLE_LEVEL } ?: DEFAULT_ROLE
+
+    fun setRole(context: Context, role: String) {
+        if (role !in ROLE_LEVEL || role == role(context)) return
+        prefs(context).edit().putString(KEY_ROLE, role).apply()
         sync(context)
     }
 
-    /** 설정 화면에 표시할 상태(JSON 문자열) */
+    /** 현재 권한으로 다룰 수 있는 알림 종류 */
+    fun permittedTypes(context: Context): List<String> {
+        val userRole = role(context)
+        return TYPES.filter { type -> hasPermission(userRole, TYPE_MIN_ROLE.getValue(type)) }
+    }
+
+    /**
+     * 알림 종류별 수신 설정을 바꾸고 포털에 저장합니다.
+     * 저장에 실패하면 이전 값으로 되돌리고 [onResult] 에 false 를 전달합니다. (호출 스레드는 정해져 있지 않음)
+     */
+    fun setTypeEnabled(context: Context, type: String, enabled: Boolean, onResult: (Boolean) -> Unit = {}) {
+        if (type !in permittedTypes(context)) {
+            onResult(false)
+            return
+        }
+        val previous = isTypeEnabled(context, type)
+        prefs(context).edit().putBoolean(KEY_TYPE_PREFIX + type, enabled).apply()
+        sync(context) { saved ->
+            if (!saved) prefs(context).edit().putBoolean(KEY_TYPE_PREFIX + type, previous).apply()
+            onResult(saved)
+        }
+    }
+
+    /** 설정 화면에 표시할 상태(JSON 문자열). 권한 밖의 알림 종류는 넣지 않습니다. */
     fun stateJson(context: Context): String = JSONObject().apply {
         put("supported", isAvailable(context))
         // 마지막 기기 등록 때 서버가 알림 발송 준비가 되어 있었는지 여부
         put("serverReady", prefs(context).getBoolean(KEY_SERVER_READY, true))
+        put("role", role(context))
         put("types", JSONObject().apply {
-            TYPES.forEach { type -> put(type, isTypeEnabled(context, type)) }
+            permittedTypes(context).forEach { type -> put(type, isTypeEnabled(context, type)) }
         })
     }.toString()
 
@@ -114,32 +162,46 @@ object PortalPush {
     }
 
     /** 토큰·수신 설정을 포털에 등록합니다. 내용이 같고 최근에 등록했으면 건너뜁니다. */
-    fun sync(context: Context) {
+    fun sync(context: Context, onResult: ((Boolean) -> Unit)? = null) {
         val appContext = context.applicationContext
-        if (!isAvailable(appContext)) return
+        if (!isAvailable(appContext)) {
+            onResult?.invoke(false)
+            return
+        }
         try {
             FirebaseMessaging.getInstance().token
                 .addOnSuccessListener { token ->
-                    if (!token.isNullOrBlank()) {
+                    if (token.isNullOrBlank()) {
+                        onResult?.invoke(false)
+                    } else {
                         prefs(appContext).edit().putString(KEY_TOKEN, token).apply()
-                        executor.execute { register(appContext, token) }
+                        executor.execute {
+                            val saved = register(appContext, token)
+                            onResult?.invoke(saved)
+                        }
                     }
                 }
-                .addOnFailureListener { error -> Log.w(TAG, "token unavailable: ${error.message}") }
+                .addOnFailureListener { error ->
+                    Log.w(TAG, "token unavailable: ${error.message}")
+                    onResult?.invoke(false)
+                }
         } catch (e: Exception) {
             Log.w(TAG, "sync skipped: ${e.message}")
+            onResult?.invoke(false)
         }
     }
 
-    private fun register(context: Context, token: String) {
+    /** 포털에 저장되었거나 이미 같은 내용이 저장되어 있으면 true */
+    private fun register(context: Context, token: String): Boolean {
         val payload = JSONObject().apply {
             put("deviceId", deviceId(context))
             put("token", token)
             put("platform", "android")
             put("appVersion", BuildConfig.VERSION_NAME)
             put("notificationsEnabled", NotificationManagerCompat.from(context).areNotificationsEnabled())
+            // 권한 밖의 알림 종류는 보내지 않습니다.
             put("types", JSONObject().apply {
-                TYPES.forEach { type -> put(type, isTypeEnabled(context, type)) }
+                permittedTypes(context).forEach { type -> put(type, isTypeEnabled(context, type)) }
             })
         }.toString()
 
@@ -148,10 +210,10 @@ object PortalPush {
             .joinToString("") { "%02x".format(it) }
         val store = prefs(context)
         val recentlySynced = System.currentTimeMillis() - store.getLong(KEY_SYNC_AT, 0L) < RESYNC_INTERVAL_MS
-        if (hash == store.getString(KEY_SYNC_HASH, null) && recentlySynced) return
+        if (hash == store.getString(KEY_SYNC_HASH, null) && recentlySynced) return true
 
         var connection: HttpURLConnection? = null
-        try {
+        return try {
             connection = (URL(BuildConfig.PORTAL_BASE_URL + REGISTER_PATH).openConnection() as HttpURLConnection).apply {
                 requestMethod = "POST"
                 connectTimeout = 10_000
@@ -175,11 +237,14 @@ object PortalPush {
                     Log.w(TAG, "portal push delivery is not configured on the server")
                 }
                 editor.apply()
+                true
             } else {
                 Log.w(TAG, "device registration failed: HTTP $status")
+                false
             }
         } catch (e: Exception) {
             Log.w(TAG, "device registration failed: ${e.message}")
+            false
         } finally {
             connection?.disconnect()
         }

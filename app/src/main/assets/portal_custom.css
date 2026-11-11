@@ -87,7 +87,7 @@ header.top .header-actions {
 
 .top .header-actions .header-admin,
 header.top .header-actions .header-admin {
-    min-height: 36px !important;
+    min-height: 44px !important;
     padding: 0 12px !important;
     white-space: nowrap !important;
 }
@@ -261,10 +261,31 @@ html:has(dialog[open]) {
 }
 
 /* 알림 종류별 수신 스위치 */
+.kp-switch-group {
+    margin-top: 16px;
+}
+
+/* 구역 사이 구분선: 구역이 권한으로 빠지면 구분선도 함께 사라짐 */
+.kp-switch-group + .kp-switch-group {
+    padding-top: 16px;
+    border-top: 1px solid var(--kp-line);
+}
+
+.kp-switch-group-title {
+    margin: 0 0 8px;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    color: var(--kp-text-2);
+}
+
 .kp-switch-list {
     display: grid;
     gap: 8px;
-    margin-top: 12px;
+}
+
+#kp-push-area[aria-busy] .kp-switch {
+    cursor: progress;
 }
 
 .kp-switch {
@@ -283,9 +304,28 @@ html:has(dialog[open]) {
     text-align: left;
     cursor: pointer;
     box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent;
+    transition: background 0.12s, border-color 0.12s;
+}
+
+.kp-switch:active:not(:disabled) {
+    background: var(--kp-bg);
+    border-color: var(--kp-btn-line);
+}
+
+.kp-switch:focus-visible {
+    outline: 2px solid var(--kp-accent);
+    outline-offset: 2px;
+}
+
+/* 저장 중에는 다시 누를 수 없음 (방금 누른 스위치의 상태는 그대로 보임) */
+.kp-switch:disabled {
+    cursor: progress;
+    opacity: 0.6;
 }
 
 .kp-switch > span:first-child {
+    flex: 1 1 auto;
     min-width: 0;
 }
 
@@ -293,15 +333,19 @@ html:has(dialog[open]) {
     display: block;
     font-size: 14px;
     font-weight: 700;
+    line-height: 1.4;
     color: var(--kp-text);
+    word-break: keep-all;
 }
 
 .kp-switch small {
     display: block;
-    margin-top: 3px;
-    font-size: 12px;
-    line-height: 1.4;
+    margin-top: 2px;
+    font-size: 12.5px;
+    line-height: 1.5;
     color: var(--kp-muted);
+    word-break: keep-all;
+    overflow-wrap: anywhere;
 }
 
 .kp-switch-track {
