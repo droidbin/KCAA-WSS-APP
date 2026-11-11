@@ -41,6 +41,7 @@ object PortalPush {
     private const val KEY_TOKEN = "fcm_token"
     private const val KEY_SYNC_HASH = "sync_hash"
     private const val KEY_SYNC_AT = "sync_at"
+    private const val KEY_SERVER_READY = "server_ready"
     private const val KEY_TYPE_PREFIX = "type_"
     private const val RESYNC_INTERVAL_MS = 7L * 24 * 60 * 60 * 1000
     private const val REGISTER_PATH = "api/push/device"
@@ -100,6 +101,8 @@ object PortalPush {
     /** 설정 화면에 표시할 상태(JSON 문자열) */
     fun stateJson(context: Context): String = JSONObject().apply {
         put("supported", isAvailable(context))
+        // 마지막 기기 등록 때 서버가 알림 발송 준비가 되어 있었는지 여부
+        put("serverReady", prefs(context).getBoolean(KEY_SERVER_READY, true))
         put("types", JSONObject().apply {
             TYPES.forEach { type -> put(type, isTypeEnabled(context, type)) }
         })
@@ -160,10 +163,18 @@ object PortalPush {
             connection.outputStream.use { it.write(payload.toByteArray(Charsets.UTF_8)) }
             val status = connection.responseCode
             if (status in 200..299) {
-                store.edit()
-                    .putString(KEY_SYNC_HASH, hash)
-                    .putLong(KEY_SYNC_AT, System.currentTimeMillis())
-                    .apply()
+                val answer = connection.inputStream.bufferedReader().use { it.readText() }
+                // 서버에 FCM 발송 설정이 없으면 등록은 되어도 알림이 오지 않습니다.
+                val serverReady = runCatching { JSONObject(answer).optBoolean("configured", true) }
+                    .getOrDefault(true)
+                val editor = store.edit().putBoolean(KEY_SERVER_READY, serverReady)
+                if (serverReady) {
+                    editor.putString(KEY_SYNC_HASH, hash).putLong(KEY_SYNC_AT, System.currentTimeMillis())
+                } else {
+                    // 등록 완료로 기록하지 않아, 서버가 준비되면 다음 실행 때 다시 확인합니다.
+                    Log.w(TAG, "portal push delivery is not configured on the server")
+                }
+                editor.apply()
             } else {
                 Log.w(TAG, "device registration failed: HTTP $status")
             }

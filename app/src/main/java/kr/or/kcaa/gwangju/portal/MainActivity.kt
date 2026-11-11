@@ -135,7 +135,21 @@ class MainActivity : AppCompatActivity() {
             binding.webView.restoreState(savedInstanceState)
         } else {
             loadPortalUrl(resolveInitialUrl(intent))
+            askNotificationPermissionOnFirstRun()
         }
+    }
+
+    /**
+     * 푸시를 지원하는 빌드에서 알림 권한을 한 번만 먼저 묻습니다 (Android 13+).
+     * 거부한 뒤에는 다시 묻지 않으며, 설정 화면의 [알림 허용]으로만 요청합니다.
+     */
+    private fun askNotificationPermissionOnFirstRun() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return
+        if (!PortalPush.isAvailable(this) || areNotificationsEnabled()) return
+        val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        if (prefs.getBoolean(KEY_NOTIF_ASKED, false)) return
+        prefs.edit().putBoolean(KEY_NOTIF_ASKED, true).apply()
+        notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
     }
 
     override fun onNewIntent(intent: Intent) {

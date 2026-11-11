@@ -114,6 +114,7 @@
             <span class="kp-switch-track" aria-hidden="true"></span>
           </button>`).join('')}
         </div>
+        ${push.serverReady === false ? '<p class="kp-note">포털 서버의 알림 발송이 아직 준비되지 않아 알림이 오지 않을 수 있습니다. 관리자에게 문의해 주세요.</p>' : ''}
         <p class="kp-note">발주·업무요청·증명서 알림은 이 앱에서 제출한 요청에 대해서만 전달됩니다. 알림에는 요청 내용이 포함되지 않습니다.</p>`
       : '<p class="kp-note">이 앱 버전은 푸시 수신을 지원하지 않습니다. 새 공지는 포털 공지사항에서 확인해 주세요.</p>';
 
