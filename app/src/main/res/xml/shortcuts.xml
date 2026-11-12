@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut
+        android:shortcutId="open_settings"
+        android:enabled="true"
+        android:icon="@drawable/ic_settings_gear"
+        android:shortcutShortLabel="@string/settings_shortcut_label"
+        android:shortcutLongLabel="@string/settings_shortcut_long_label">
+        <intent
+            android:action="kr.or.kcaa.gwangju.portal.action.OPEN_SETTINGS"
+            android:targetClass="kr.or.kcaa.gwangju.portal.MainActivity"
+            android:targetPackage="kr.or.kcaa.gwangju.portal" />
+    </shortcut>
+</shortcuts>

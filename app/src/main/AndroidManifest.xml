@@ -47,7 +47,33 @@
                     android:scheme="https"
                     android:host="gwangju-work-portal.pages.dev" />
             </intent-filter>
+
+            <!-- 발주·증명서 사이트 링크 (각 사이트의 /.well-known/assetlinks.json 이 배포되어 있어야 검증됨) -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data
+                    android:scheme="https"
+                    android:host="gwangju-orders-migration.pages.dev" />
+                <data
+                    android:scheme="https"
+                    android:host="gwangju-student-certificates.pages.dev" />
+            </intent-filter>
+
+            <!-- 런처 아이콘 길게 누르기: 설정 -->
+            <meta-data
+                android:name="android.app.shortcuts"
+                android:resource="@xml/shortcuts" />
         </activity>
+
+        <!-- 앱 설정 화면: 앱 안에서만 열림 -->
+        <activity
+            android:name=".settings.SettingsActivity"
+            android:exported="false"
+            android:label="@string/settings_shortcut_label"
+            android:theme="@style/Theme.GwangjuWorkPortal"
+            android:windowSoftInputMode="adjustResize" />
 
         <!-- 포털 서버 푸시(FCM) 수신 -->
         <service

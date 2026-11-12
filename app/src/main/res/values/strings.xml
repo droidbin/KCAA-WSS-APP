@@ -12,6 +12,14 @@
     <string name="msg_open_external_failed">이 링크를 열 수 있는 앱이 없습니다.</string>
     <string name="chooser_file_upload">첨부할 파일 또는 사진 선택</string>
 
+    <!-- 설정 -->
+    <string name="settings_back">뒤로</string>
+    <string name="settings_open">앱 설정</string>
+    <string name="settings_shortcut_label">설정</string>
+    <string name="settings_shortcut_long_label">앱 설정 열기</string>
+    <string name="settings_confirm">확인</string>
+    <string name="settings_cancel">취소</string>
+
     <!-- 알림 -->
     <string name="notif_channel_notice">공지</string>
     <string name="notif_channel_notice_desc">포털에 새 공지가 등록되면 알림</string>

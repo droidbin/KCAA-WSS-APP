@@ -27,7 +27,10 @@ class PortalJsBridge(
     private val onOpenNotificationSettings: () -> Unit,
     private val onSendTestNotification: () -> Unit,
     private val onModalStateChanged: (Boolean) -> Unit,
-    private val onPushTypeResult: (type: String, enabled: Boolean, saved: Boolean) -> Unit
+    private val onPushTypeResult: (type: String, enabled: Boolean, saved: Boolean) -> Unit,
+    private val onOpenSettings: () -> Unit,
+    private val onPortalAdminChanged: (Boolean) -> Unit,
+    private val onPortalLinksChanged: (String) -> Unit
 ) {
     private val mainHandler = Handler(Looper.getMainLooper())
 
@@ -78,6 +81,18 @@ class PortalJsBridge(
     /** 포털 세션으로 확인한 권한(staff / admin / super_admin) — 권한 밖의 알림 종류는 서버에 보내지 않습니다. */
     @JavascriptInterface
     fun setPushRole(role: String) = runTrusted { PortalPush.setRole(context, role) }
+
+    /** 포털 헤더의 [설정] 버튼: 앱 설정 화면을 엽니다. */
+    @JavascriptInterface
+    fun openAppSettings() = runTrusted { onOpenSettings() }
+
+    /** 포털 화면의 관리자 메뉴 노출 여부(관리자 로그인 상태)를 알려, 설정 화면의 관리자 메뉴 표시에 씁니다. */
+    @JavascriptInterface
+    fun setPortalAdmin(admin: Boolean) = runTrusted { onPortalAdminChanged(admin) }
+
+    /** 포털 화면에서 읽은 바로가기 주소(JSON 객체: 키 → 주소). 포털 주소가 바뀌어도 설정 화면이 따라가게 합니다. */
+    @JavascriptInterface
+    fun setPortalLinks(json: String) = runTrusted { onPortalLinksChanged(json.take(4000)) }
 
     @JavascriptInterface
     fun sendTestNotification() = runTrusted { onSendTestNotification() }

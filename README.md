@@ -1,6 +1,6 @@
-# 요리광주 업무지원포털 모바일 앱 (v1.6.0)
+# 요리광주 업무지원포털 모바일 앱 (v1.7.0)
 
-[![Release](https://img.shields.io/badge/Release-v1.6.0-blue.svg)](https://github.com/droidbin/KCAA-WSS-APP/releases/tag/v1.6.0)
+[![Release](https://img.shields.io/badge/Release-v1.7.0-blue.svg)](https://github.com/droidbin/KCAA-WSS-APP/releases/tag/v1.7.0)
 [![Platform](https://img.shields.io/badge/Platform-Android%208.0+-green.svg)](https://developer.android.com)
 [![Target SDK](https://img.shields.io/badge/Target%20SDK-36-orange.svg)](https://developer.android.com)
 
@@ -16,8 +16,8 @@
 
 | 다운로드 파일 | 파일명 | 설명 |
 | :--- | :--- | :--- |
-| **정식 릴리스 APK** | **[`kcook_wss_v1.6.0.apk`](https://github.com/droidbin/KCAA-WSS-APP/releases/download/v1.6.0/kcook_wss_v1.6.0.apk)** | 사내 배포용 공식 릴리스 서명 설치 파일 |
-| **스토어 배포용 번들** | **[`app-release.aab`](https://github.com/droidbin/KCAA-WSS-APP/releases/download/v1.6.0/app-release.aab)** | Google Play Console 등록용 App Bundle |
+| **정식 릴리스 APK** | **[`kcook_wss_v1.7.0.apk`](https://github.com/droidbin/KCAA-WSS-APP/releases/download/v1.7.0/kcook_wss_v1.7.0.apk)** | 사내 배포용 공식 릴리스 서명 설치 파일 |
+| **스토어 배포용 번들** | **[`app-release.aab`](https://github.com/droidbin/KCAA-WSS-APP/releases/download/v1.7.0/app-release.aab)** | Google Play Console 등록용 App Bundle |
 
 > 📌 **첫 설치 시 안내 (사내 배포 앱)**:
 > 1. 링크 클릭 후 다운로드 진행 시 "유해한 파일일 수 있음" 경고 발생 시 **[무시하고 다운로드]** 선택
@@ -36,13 +36,22 @@
 | **마이너 업데이트** | `0.1` 단위 | `v1.1.0`, `v1.2.0` ... | 주요 기능 추가, UX/UI 디자인 시스템 개편, 로딩 고도화 |
 | **버그픽스 / 패치** | `0.0.1` 단위 | `v1.1.1`, `v1.2.1` ... | UI/UX 버그 수정, 웹뷰 대응 및 긴급 안정성 패치 |
 
-* Android 내부 빌드 번호(`versionCode`)는 스토어 및 기기 업데이트 호환성을 위해 매 릴리스마다 `+1`씩 단조 증가합니다. (현재 버전: `v1.6.0` / versionCode `16`)
+* Android 내부 빌드 번호(`versionCode`)는 스토어 및 기기 업데이트 호환성을 위해 매 릴리스마다 `+1`씩 단조 증가합니다. (현재 버전: `v1.7.0` / versionCode `17`)
 
 ---
 
 ## 🚀 주요 핵심 기능 및 아키텍처
 
-### 0. 포털 알림 허브 연동 보강 (신규 v1.6.0)
+### 0. 별도 앱 설정 화면 및 알림 허브 연동 완성 (신규 v1.7.0)
+- **네이티브 설정 화면(`settings/`)**: 포털 팝업에 주입하던 설정을 별도 화면(`SettingsActivity`)으로 분리. 알림 / 바로가기 / 관리자 / 앱 / 정보로 나뉘며 웹 페이지 상태·마크업과 무관하게 열림
+- **모든 화면에서 진입**: 포털 메인은 헤더 [설정] 버튼, 발주·증명서·법정의무교육·인사관리 같은 모듈 화면은 앱이 띄우는 작은 설정 버튼(위아래로 끌어 옮길 수 있고 위치 저장), 앱 밖에서는 런처 아이콘 길게 누르기 → "설정"
+- **새로고침 = 포털 메인으로 이동**: 당겨서 새로고침과 설정의 [포털 새로고침]은 현재 페이지를 다시 불러오지 않고 포털 메인으로 이동 (입력 중인 모듈 화면에서는 입력 내용이 사라질 수 있음)
+- **설정 항목 추가 방법**: `settings/SettingsCatalog.kt` 의 해당 `SettingsPage` 에 `Row`(스위치/이동/동작/링크/정보)를 한 줄 더하면 화면 코드 수정 없이 나타남. 새 하위 화면은 `SettingsPage` 를 만들어 `pages` 에 넣고 `Kind.NAV` 행으로 연결. 웹을 움직이는 동작은 설정 화면이 `SettingsContract` 의 고정 액션으로 메인 화면에 요청(임의 주소·스크립트 불가)
+- **알림 공용 코드**: 권한 요청·시스템 설정·테스트 알림을 `push/PortalNotifications.kt` 로 모아 메인·설정 화면이 함께 사용
+- **기기 알림이 꺼지면 서버 등록 해제**: 서버 `DELETE /api/push/device` 호출, 다시 켜면 새로 등록. 서버가 알려 준 관리자 역할(`unified`/`reader`)을 앱 권한에 반영하고, 오프라인에서는 관리자 권한을 내리지 않음
+- **앱 링크 확장**: 발주·증명서 도메인도 앱으로 열리도록 `autoVerify` 링크 추가 (각 사이트 `assetlinks.json` 배포 확인)
+
+### 0-000. 포털 알림 허브 연동 보강 (v1.6.0 범위)
 - **종류별 알림 채널**: 공지 / 발주 / 업무요청 / 증명서 / 관리자 채널로 나눠, 기기의 시스템 알림 설정에서 종류별로 소리·표시를 조절할 수 있음. 이전의 단일 채널은 삭제(`push/PortalPush.kt`)
 - **알림 주소 검증**: 알림이 여는 주소는 포털·발주·증명서 도메인(https)만 허용하고, 그 외에는 포털 홈으로 대체(`util/PortalHosts.kt`)
 - **모르는 알림 종류**: 서버가 새 종류를 보내면 공지 채널로 표시하고 공지 수신 설정을 따름
@@ -88,21 +97,21 @@
 - **보안 및 스토리지**: DOM Storage, 세션 쿠키 영속화(`CookieManager.flush()`), 다중 창(`window.open` / `target="_blank"`) 제어
 - **레이아웃 보호**: 사용자 시스템 폰트 크기 변경에 따른 웹 UI 깨짐 방지 (`textZoom = 100`)
 - **Android 15 Edge-to-Edge 지원**: 상태바 및 시스템 네비게이션 바와의 겹침 방지 (`ViewCompat.setOnApplyWindowInsetsListener`)
-- **User-Agent 식별자**: 안드로이드 전용 앱임을 식별할 수 있는 브라우저 에이전트 주입 (`KCAAWssAndroid/1.6.0`)
+- **User-Agent 식별자**: 안드로이드 전용 앱임을 식별할 수 있는 브라우저 에이전트 주입 (`KCAAWssAndroid/1.7.0`)
 
 ### 3. 브랜드 디자인 및 가독성 최적화
 - **브랜드 로고 통일**: 포털 및 서브 시스템의 로고 요청을 앱 내장 엠블럼으로 대체하여 일관되게 표시
 - **서브 시스템 로고 호환**: 수강생 증명서 발급 등 흰색 배경 페이지의 헤더에서는 고유 다크 엠블럼을 유지하도록 자동 판별
 - **Adaptive Launcher Icon**: 안드로이드 표준 규격의 라운드 및 스퀘어 아이콘 지원
 
-### 4. 사용자 중심의 설정 모달 (`설정`)
+### 4. 사용자 중심의 설정 화면 (`설정`) — v1.7.0 부터 별도 화면, 아래는 제공 기능 요약
 - **기기 알림 관리**: 기기 시스템 알림 허용 여부 상태 뱃지, 원클릭 알림 권한 요청, 테스트 알림 발송, 시스템 설정 바로가기 제공
 - **빠른 업무 바로가기**:
   - 법정의무교육 온라인 수강 바로가기
   - 물품 및 수업자재 발주요청서 작성
   - 카카오톡 1:1 업무지원 상담 채널
   - 수강생 증명서 발급 시스템 다이렉트 연동
-- **앱 환경 관리**: 포털 원클릭 새로고침 및 캐시/세션 초기화 기능, 앱 버전(`v1.6.0`) 자동 연동 표시
+- **앱 환경 관리**: 포털 원클릭 새로고침 및 캐시/세션 초기화 기능, 앱 버전(`v1.7.0`) 자동 연동 표시
 
 ### 5. 네이티브 파일 입출력 완벽 연동
 - **파일 업로드 (`WebChromeClient.onShowFileChooser`)**: `<input type="file">` 동작 시 **카메라 즉시 촬영(`FileProvider`)**과 **갤러리/파일 탐색기** 동시 지원
@@ -126,17 +135,17 @@
 
 ### 빌드 명령어
 ```bash
-# 1. 정식 릴리스 APK 빌드 (kcook_wss_v1.6.0.apk 생성)
+# 1. 정식 릴리스 APK 빌드 (kcook_wss_v1.7.0.apk 생성)
 ./gradlew assembleRelease
 
 # 2. Google Play Store 배포용 번들 빌드 (app-release.aab 생성)
 ./gradlew bundleRelease
 
-# 3. 디버그 호환용 APK 빌드 (kcook_wss_v1.6.0_debug.apk 생성)
+# 3. 디버그 호환용 APK 빌드 (kcook_wss_v1.7.0_debug.apk 생성)
 ./gradlew assembleDebug
 ```
 
 출력 파일 경로:
-- Release APK: `app/build/outputs/apk/release/kcook_wss_v1.6.0.apk`
+- Release APK: `app/build/outputs/apk/release/kcook_wss_v1.7.0.apk`
 - Release AAB: `app/build/outputs/bundle/release/app-release.aab`
-- Debug APK: `app/build/outputs/apk/debug/kcook_wss_v1.6.0_debug.apk`
+- Debug APK: `app/build/outputs/apk/debug/kcook_wss_v1.7.0_debug.apk`

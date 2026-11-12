@@ -87,6 +87,7 @@ object PortalPush {
     private const val KEY_TYPE_PREFIX = "type_"
     private const val KEY_STATE_AT = "server_state_at"
     private const val KEY_RETRY_AT = "register_retry_at"
+    private const val KEY_UNREGISTERED = "unregistered"
     private const val KEY_REGISTER_ERROR = "register_error"
     private const val RESYNC_INTERVAL_MS = 7L * 24 * 60 * 60 * 1000
     private const val STATE_CHECK_INTERVAL_MS = 6L * 60 * 60 * 1000
@@ -185,14 +186,28 @@ object PortalPush {
             return
         }
         executor.execute {
-            val keepsAdmin = fetchServerState(appContext)?.optBoolean("admin", false) == true
-            if (keepsAdmin) {
+            // 서버 확인에 실패하면(오프라인 등) 권한을 그대로 두고, 서버가 관리자가 아니라고 답했을 때만 내립니다.
+            val state = fetchServerState(appContext)
+            if (state == null) {
+                notifyStateChanged()
+            } else if (state.optBoolean("admin", false)) {
+                applyServerRole(appContext, state)
                 notifyStateChanged()
             } else {
                 prefs(appContext).edit().putString(KEY_ROLE, DEFAULT_ROLE).apply()
                 sync(appContext) { notifyStateChanged() }
             }
         }
+    }
+
+    /** 서버가 알려 준 관리자 역할(`unified`/`reader`)로 이 기기의 권한을 맞춥니다. 모르는 값은 무시합니다. */
+    private fun applyServerRole(context: Context, state: JSONObject) {
+        val mapped = when (state.optString("role")) {
+            "unified" -> "super_admin"
+            "reader" -> "admin"
+            else -> return
+        }
+        if (mapped != role(context)) prefs(context).edit().putString(KEY_ROLE, mapped).apply()
     }
 
     /** 현재 권한으로 다룰 수 있는 알림 종류 */
@@ -242,6 +257,11 @@ object PortalPush {
         val appContext = context.applicationContext
         if (!isAvailable(appContext)) {
             onResult?.invoke(false)
+            return
+        }
+        // 기기 알림이 꺼져 있으면 서버 등록을 해제합니다. 다시 켜면 아래에서 새로 등록합니다.
+        if (!NotificationManagerCompat.from(appContext).areNotificationsEnabled()) {
+            executor.execute { onResult?.invoke(unregister(appContext)) }
             return
         }
         try {
@@ -295,6 +315,39 @@ object PortalPush {
         }
     }
 
+    /**
+     * 서버의 이 앱 기기 등록을 해제합니다. (`DELETE /api/push/device`, 기기 쿠키 또는 본문 deviceId 로 식별)
+     * 이미 해제했으면 다시 보내지 않습니다. 해제하면 다음 등록이 반드시 서버로 가도록 등록 기록을 지웁니다.
+     * 해제 API가 없는 서버(404/405)이면 등록 기록을 그대로 두고, 서버가 `notificationsEnabled` 로 발송을 거릅니다.
+     */
+    private fun unregister(context: Context): Boolean {
+        val store = prefs(context)
+        if (store.getBoolean(KEY_UNREGISTERED, false)) return true
+        var connection: HttpURLConnection? = null
+        return try {
+            connection = open(REGISTER_PATH, "DELETE").apply {
+                doOutput = true
+                setRequestProperty("Content-Type", "application/json; charset=utf-8")
+            }
+            connection.outputStream.use {
+                it.write(JSONObject().put("deviceId", deviceId(context)).toString().toByteArray(Charsets.UTF_8))
+            }
+            val status = connection.responseCode
+            if (status in 200..299) {
+                store.edit().putBoolean(KEY_UNREGISTERED, true).remove(KEY_SYNC_HASH).remove(KEY_SYNC_AT).apply()
+                true
+            } else {
+                Log.w(TAG, "device unregistration failed: HTTP $status")
+                false
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "device unregistration failed: ${e.message}")
+            false
+        } finally {
+            connection?.disconnect()
+        }
+    }
+
     private fun setRegisterError(context: Context, error: String) {
         val store = prefs(context)
         if (store.getString(KEY_REGISTER_ERROR, "") == error) return
@@ -328,6 +381,7 @@ object PortalPush {
             if (now - lastCheck in 0 until STATE_CHECK_INTERVAL_MS) return true
             val state = fetchServerState(context) ?: return true
             store.edit().putLong(KEY_STATE_AT, now).apply()
+            if (state.optBoolean("admin", false)) applyServerRole(context, state)
             if (state.optBoolean("device", true)) return true
         }
 
@@ -350,6 +404,7 @@ object PortalPush {
                 val editor = store.edit().putBoolean(KEY_SERVER_READY, serverReady)
                 if (serverReady) {
                     editor.putString(KEY_SYNC_HASH, hash).putLong(KEY_SYNC_AT, now).putLong(KEY_STATE_AT, now)
+                        .putBoolean(KEY_UNREGISTERED, false)
                 } else {
                     // 등록 완료로 기록하지 않아, 서버가 준비되면 다음 실행 때 다시 확인합니다.
                     Log.w(TAG, "portal push delivery is not configured on the server")

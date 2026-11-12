@@ -19,7 +19,9 @@ import android.os.SystemClock
 import android.provider.MediaStore
 import android.provider.Settings
 import android.util.Base64
+import android.view.MotionEvent
 import android.view.View
+import android.view.ViewConfiguration
 import android.webkit.CookieManager
 import android.webkit.PermissionRequest
 import android.webkit.ValueCallback
@@ -47,7 +49,10 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.updateLayoutParams
 import kr.or.kcaa.gwangju.portal.bridge.PortalJsBridge
 import kr.or.kcaa.gwangju.portal.databinding.ActivityMainBinding
+import kr.or.kcaa.gwangju.portal.push.PortalNotifications
 import kr.or.kcaa.gwangju.portal.push.PortalPush
+import kr.or.kcaa.gwangju.portal.settings.SettingsActivity
+import kr.or.kcaa.gwangju.portal.settings.SettingsContract
 import kr.or.kcaa.gwangju.portal.util.PortalDownloadHelper
 import kr.or.kcaa.gwangju.portal.util.PortalHosts
 import java.io.File
@@ -71,8 +76,24 @@ class MainActivity : AppCompatActivity() {
     @Volatile
     private var isCurrentPageTrusted: Boolean = false
 
-    /** 웹 다이얼로그(설정 등)가 열려 있는지 여부 — 열려 있으면 당겨서 새로고침 비활성화 */
+    /** 웹 다이얼로그(게시글 등)가 열려 있는지 여부 — 열려 있으면 당겨서 새로고침 비활성화 */
     private var isWebModalOpen: Boolean = false
+
+    /** 포털이 알려 준 관리자 로그인 여부 (설정 화면의 관리자 메뉴 표시용) */
+    @Volatile
+    private var portalAdmin: Boolean = false
+
+    /** 포털 화면에서 읽은 바로가기 주소(JSON). 모듈 화면에서 설정을 열 때도 쓰도록 저장해 둡니다. */
+    @Volatile
+    private var portalLinksJson: String = ""
+
+    /** 지금 보고 있는 주소 (설정 버튼 표시 여부 판단용) */
+    private var currentUrl: String? = null
+
+    /** 포털 메인으로 이동한 뒤 눌러야 할 포털 버튼 ID (관리자 기능) */
+    private var pendingPortalClick: String? = null
+
+    private var isKeyboardVisible: Boolean = false
 
     // 파일/카메라 선택 결과 콜백
     private val fileChooserLauncher = registerForActivityResult(
@@ -123,39 +144,35 @@ class MainActivity : AppCompatActivity() {
         binding.tvLoadingVersion.text = getString(R.string.app_version_format, BuildConfig.VERSION_NAME)
 
         PortalPush.ensureChannels(this)
-        PortalPush.stateListener = { runOnUiThread { dispatchPushState() } }
+        portalLinksJson = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            .getString(KEY_PORTAL_LINKS, "").orEmpty()
         setupWebView()
         PortalPush.applyDeviceCookie(this)
         PortalPush.sync(this)
         setupSwipeRefresh()
         setupErrorView()
         setupBackNavigation()
+        setupSettingsFab()
         updateSystemBarAppearance()
 
         if (savedInstanceState != null) {
             binding.webView.restoreState(savedInstanceState)
         } else {
             loadPortalUrl(resolveInitialUrl(intent))
-            askNotificationPermissionOnFirstRun()
+            // 첫 실행 때 알림 권한을 한 번만 먼저 묻습니다 (Android 13+). 거부한 뒤에는 설정 화면의 [알림 허용]으로만 요청.
+            PortalNotifications.askOnFirstRun(this, notificationPermissionLauncher)
+            // 런처 아이콘 길게 누르기 → 설정으로 앱이 새로 시작된 경우
+            if (intent?.action == ACTION_OPEN_SETTINGS) binding.root.post { openSettings() }
         }
-    }
-
-    /**
-     * 푸시를 지원하는 빌드에서 알림 권한을 한 번만 먼저 묻습니다 (Android 13+).
-     * 거부한 뒤에는 다시 묻지 않으며, 설정 화면의 [알림 허용]으로만 요청합니다.
-     */
-    private fun askNotificationPermissionOnFirstRun() {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return
-        if (!PortalPush.isAvailable(this) || areNotificationsEnabled()) return
-        val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        if (prefs.getBoolean(KEY_NOTIF_ASKED, false)) return
-        prefs.edit().putBoolean(KEY_NOTIF_ASKED, true).apply()
-        notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
     }
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
+        if (intent.action == ACTION_OPEN_SETTINGS) {
+            openSettings()
+            return
+        }
         targetUrlFrom(intent)?.let { loadPortalUrl(it) }
     }
 
@@ -171,6 +188,11 @@ class MainActivity : AppCompatActivity() {
                 WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout()
             )
             val ime = insets.getInsets(WindowInsetsCompat.Type.ime())
+            val keyboardNow = insets.isVisible(WindowInsetsCompat.Type.ime())
+            if (keyboardNow != isKeyboardVisible) {
+                isKeyboardVisible = keyboardNow
+                updateSettingsFab()
+            }
             v.setPadding(bars.left, 0, bars.right, 0)
             binding.statusBarScrim.updateLayoutParams { height = bars.top }
             binding.navBarScrim.updateLayoutParams { height = maxOf(bars.bottom, ime.bottom) }
@@ -192,6 +214,7 @@ class MainActivity : AppCompatActivity() {
             isAppearanceLightStatusBars = true
             isAppearanceLightNavigationBars = true
         }
+        updateSettingsFab()
     }
 
     @SuppressLint("SetJavaScriptEnabled")
@@ -227,7 +250,8 @@ class MainActivity : AppCompatActivity() {
                 PortalJsBridge(
                     context = this@MainActivity,
                     isTrustedContext = { isCurrentPageTrusted },
-                    onReloadRequested = { reload() },
+                    // 새로고침은 현재 페이지가 아니라 포털 메인으로 이동
+                    onReloadRequested = { loadPortalUrl(BuildConfig.PORTAL_BASE_URL) },
                     onClearCacheRequested = {
                         clearCache(true)
                         clearHistory()
@@ -240,7 +264,14 @@ class MainActivity : AppCompatActivity() {
                         isWebModalOpen = open
                         updateSwipeRefreshEnabled()
                     },
-                    onPushTypeResult = { type, enabled, saved -> dispatchPushTypeResult(type, enabled, saved) }
+                    onPushTypeResult = { type, enabled, saved -> dispatchPushTypeResult(type, enabled, saved) },
+                    onOpenSettings = { openSettings() },
+                    onPortalAdminChanged = { admin -> portalAdmin = admin },
+                    onPortalLinksChanged = { json ->
+                        portalLinksJson = json
+                        getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+                            .edit().putString(KEY_PORTAL_LINKS, json).apply()
+                    }
                 ),
                 PortalJsBridge.BRIDGE_NAME
             )
@@ -274,13 +305,9 @@ class MainActivity : AppCompatActivity() {
             R.color.portal_accent,
             R.color.portal_accent
         )
+        // 새로고침은 현재 페이지를 다시 불러오지 않고 포털 메인으로 이동합니다. (오프라인이면 오류 화면)
         binding.swipeRefreshLayout.setOnRefreshListener {
-            if (isNetworkConnected()) {
-                binding.webView.reload()
-            } else {
-                binding.swipeRefreshLayout.isRefreshing = false
-                showErrorView()
-            }
+            loadPortalUrl(BuildConfig.PORTAL_BASE_URL)
         }
     }
 
@@ -406,58 +433,25 @@ class MainActivity : AppCompatActivity() {
         val capabilities = connectivityManager.getNetworkCapabilities(network) ?: return false
         return capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
     }
-
     // ───────────────────────── 알림 ─────────────────────────
 
-    private fun areNotificationsEnabled(): Boolean =
-        NotificationManagerCompat.from(this).areNotificationsEnabled()
+    private fun areNotificationsEnabled(): Boolean = PortalNotifications.areEnabled(this)
 
     /**
-     * 사용자가 설정 화면에서 [알림 켜기]를 눌렀을 때만 호출됩니다.
-     * - 처음 요청이거나 다시 물어볼 수 있으면 시스템 권한 대화상자 표시
-     * - 영구 거부 상태(또는 Android 12 이하에서 꺼짐)면 시스템 알림 설정 화면으로 이동
+     * 알림 권한 요청: 처음이면 시스템 대화상자, 영구 거부 상태면 시스템 알림 설정으로 이동합니다.
+     * (공용 동작은 [PortalNotifications] — 설정 화면과 같은 코드를 씁니다.)
      */
     private fun requestNotificationPermission() {
-        if (areNotificationsEnabled()) {
+        if (PortalNotifications.requestPermission(this, notificationPermissionLauncher)) {
             dispatchNotificationState()
-            return
-        }
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
-            ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS)
-            != PackageManager.PERMISSION_GRANTED
-        ) {
-            val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-            val askedBefore = prefs.getBoolean(KEY_NOTIF_ASKED, false)
-            val canAskAgain = ActivityCompat.shouldShowRequestPermissionRationale(
-                this, Manifest.permission.POST_NOTIFICATIONS
-            )
-            if (!askedBefore || canAskAgain) {
-                prefs.edit().putBoolean(KEY_NOTIF_ASKED, true).apply()
-                notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-                return
-            }
-        }
-        openNotificationSettings()
-    }
-
-    private fun openNotificationSettings() {
-        try {
-            val intent = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).apply {
-                    putExtra(Settings.EXTRA_APP_PACKAGE, packageName)
-                }
-            } else {
-                Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
-                    data = Uri.fromParts("package", packageName, null)
-                }
-            }
-            startActivity(intent)
-        } catch (e: Exception) {
-            Toast.makeText(this, R.string.msg_notif_settings_failed, Toast.LENGTH_SHORT).show()
         }
     }
 
-    /** 웹(설정 모달)에 현재 알림 권한 상태를 이벤트로 전달 */
+    private fun openNotificationSettings() = PortalNotifications.openSystemSettings(this)
+
+    private fun showTestNotification() = PortalNotifications.sendTest(this, notificationPermissionLauncher)
+
+    /** 웹에 현재 알림 권한 상태를 이벤트로 전달 */
     private fun dispatchNotificationState() {
         if (!isCurrentPageTrusted) return
         val enabled = areNotificationsEnabled()
@@ -467,7 +461,7 @@ class MainActivity : AppCompatActivity() {
         )
     }
 
-    /** 웹(설정 모달)에 알림 종류 스위치의 저장 결과를 전달 — 실패하면 웹이 스위치를 되돌립니다. */
+    /** 웹에 알림 종류 스위치의 저장 결과를 전달 (이전 버전 호환용) */
     private fun dispatchPushTypeResult(type: String, enabled: Boolean, saved: Boolean) {
         if (!isCurrentPageTrusted || type !in PortalPush.TYPES || isDestroyed) return
         binding.webView.evaluateJavascript(
@@ -477,47 +471,132 @@ class MainActivity : AppCompatActivity() {
         )
     }
 
-    /** 웹(설정 모달)에 권한·등록 상태가 바뀌었음을 알림 — 웹이 getPushState 로 다시 읽습니다. */
-    private fun dispatchPushState() {
-        if (!isCurrentPageTrusted || isDestroyed) return
+    // ───────────────────────── 설정 화면 ─────────────────────────
+
+    private val settingsLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == Activity.RESULT_OK) handleSettingsResult(result.data)
+    }
+
+    /** 앱 설정 화면을 엽니다. 포털 [설정] 버튼, 모듈 화면의 설정 버튼, 런처 바로가기가 모두 여기로 모입니다. */
+    private fun openSettings() {
+        if (isDestroyed || isFinishing) return
+        settingsLauncher.launch(
+            Intent(this, SettingsActivity::class.java)
+                .putExtra(SettingsContract.EXTRA_IS_ADMIN, portalAdmin)
+                .putExtra(SettingsContract.EXTRA_LINKS_JSON, portalLinksJson)
+        )
+    }
+
+    /** 설정 화면이 요청한 동작을 실행합니다. 정해진 액션만 처리하고, 주소는 https 만 받습니다. */
+    private fun handleSettingsResult(data: Intent?) {
+        val action = data?.getStringExtra(SettingsContract.EXTRA_ACTION) ?: return
+        when (action) {
+            SettingsContract.ACTION_RELOAD -> loadPortalUrl(BuildConfig.PORTAL_BASE_URL)
+            SettingsContract.ACTION_CLEAR_SESSION -> clearSessionAndCache()
+            SettingsContract.ACTION_OPEN_URL -> {
+                val uri = runCatching { Uri.parse(data.getStringExtra(SettingsContract.EXTRA_URL)) }.getOrNull()
+                if (uri != null && uri.scheme.equals("https", ignoreCase = true)) {
+                    if (PortalHosts.isTrusted(uri)) loadPortalUrl(uri.toString()) else openExternally(uri)
+                }
+            }
+            else -> SettingsContract.ADMIN_BUTTON_IDS[action]?.let { clickPortalButton(it) }
+        }
+    }
+
+    /** 캐시와 로그인 세션을 지우고 포털을 다시 시작합니다. 기기 식별 쿠키는 로그인 정보가 아니므로 다시 심습니다. */
+    private fun clearSessionAndCache() {
+        CookieManager.getInstance().removeAllCookies {
+            CookieManager.getInstance().flush()
+            PortalPush.applyDeviceCookie(this)
+            binding.webView.clearCache(true)
+            binding.webView.clearHistory()
+            loadPortalUrl(BuildConfig.PORTAL_BASE_URL)
+        }
+    }
+
+    private val portalHost: String? by lazy { Uri.parse(BuildConfig.PORTAL_BASE_URL).host?.lowercase(Locale.ROOT) }
+
+    /** 포털 메인(헤더에 [설정] 버튼이 있는 화면)인지 */
+    private fun isPortalMain(url: String?): Boolean {
+        val uri = runCatching { Uri.parse(url) }.getOrNull() ?: return false
+        val path = uri.path.orEmpty()
+        return uri.host?.lowercase(Locale.ROOT) == portalHost && (path.isEmpty() || path == "/")
+    }
+
+    /** 관리자 기능은 포털 메인의 (숨겨진) 버튼으로 동작하므로, 다른 화면이면 포털 메인으로 이동한 뒤 누릅니다. */
+    private fun clickPortalButton(elementId: String) {
+        if (isPortalMain(currentUrl) && !hasMainFrameError) {
+            runPortalClick(elementId)
+        } else {
+            pendingPortalClick = elementId
+            loadPortalUrl(BuildConfig.PORTAL_BASE_URL)
+        }
+    }
+
+    private fun runPortalClick(elementId: String) {
         binding.webView.evaluateJavascript(
-            "window.dispatchEvent(new CustomEvent('portal:push-state'));",
+            "(function(){var e=document.getElementById('$elementId');if(e)e.click();})();",
             null
         )
     }
 
-    private fun showTestNotification() {
-        if (!areNotificationsEnabled()) {
-            Toast.makeText(this, R.string.msg_notif_disabled, Toast.LENGTH_SHORT).show()
-            requestNotificationPermission()
-            return
-        }
-        val intent = Intent(this, MainActivity::class.java).apply {
-            flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
-        }
-        val pendingIntent = PendingIntent.getActivity(
-            this,
-            0,
-            intent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
+    // ───────────────────────── 설정 버튼 (모듈 화면) ─────────────────────────
 
-        val notification = NotificationCompat.Builder(this, CHANNEL_ID)
-            .setSmallIcon(R.drawable.ic_stat_notify)
-            .setColor(ContextCompat.getColor(this, R.color.portal_accent))
-            .setContentTitle(getString(R.string.app_loading_title))
-            .setContentText(getString(R.string.notif_test_text))
-            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
-            .setContentIntent(pendingIntent)
-            .setAutoCancel(true)
-            .build()
+    /**
+     * 포털 메인에는 헤더에 [설정] 버튼이 있지만 발주·증명서·법정의무교육·인사관리 같은 모듈 화면에는 없으므로,
+     * 앱이 직접 그리는 작은 설정 버튼을 띄웁니다. 웹 화면의 마크업과 무관하게 동작하며, 위아래로 끌어 옮길 수 있습니다.
+     */
+    @SuppressLint("ClickableViewAccessibility")
+    private fun setupSettingsFab() {
+        val fab = binding.fabSettings
+        val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val touchSlop = ViewConfiguration.get(this).scaledTouchSlop
+        fab.translationY = prefs.getFloat(KEY_FAB_OFFSET, 0f).coerceAtMost(0f)
 
-        try {
-            NotificationManagerCompat.from(this).notify(TEST_NOTIFICATION_ID, notification)
-            Toast.makeText(this, R.string.msg_notif_test_sent, Toast.LENGTH_SHORT).show()
-        } catch (e: SecurityException) {
-            Toast.makeText(this, R.string.msg_notif_disabled, Toast.LENGTH_SHORT).show()
+        var downY = 0f
+        var startTranslation = 0f
+        var dragging = false
+        fab.setOnTouchListener { view, event ->
+            when (event.actionMasked) {
+                MotionEvent.ACTION_DOWN -> {
+                    downY = event.rawY
+                    startTranslation = view.translationY
+                    dragging = false
+                    true
+                }
+                MotionEvent.ACTION_MOVE -> {
+                    val delta = event.rawY - downY
+                    if (!dragging && kotlin.math.abs(delta) > touchSlop) dragging = true
+                    if (dragging) {
+                        val parentHeight = (view.parent as View).height.toFloat()
+                        val lowest = -(parentHeight - view.height * 2f).coerceAtLeast(0f)
+                        view.translationY = (startTranslation + delta).coerceIn(lowest, 0f)
+                    }
+                    true
+                }
+                MotionEvent.ACTION_UP -> {
+                    if (dragging) {
+                        prefs.edit().putFloat(KEY_FAB_OFFSET, view.translationY).apply()
+                    } else {
+                        view.performClick()
+                    }
+                    true
+                }
+                else -> false
+            }
         }
+        fab.setOnClickListener { openSettings() }
+    }
+
+    /** 모듈 화면(포털 메인이 아닌 신뢰 도메인 화면)이나 오류 화면에서만 설정 버튼을 보여 줍니다. */
+    private fun updateSettingsFab() {
+        val errorShown = binding.errorContainer.visibility == View.VISIBLE
+        val loadingShown = binding.loadingOverlay.visibility == View.VISIBLE
+        val onModulePage = PortalHosts.isTrusted(currentUrl) && !isPortalMain(currentUrl)
+        val show = !loadingShown && !isKeyboardVisible && (errorShown || onModulePage)
+        binding.fabSettings.visibility = if (show) View.VISIBLE else View.GONE
     }
 
     // ───────────────────────── 링크 처리 ─────────────────────────
@@ -672,6 +751,8 @@ class MainActivity : AppCompatActivity() {
         override fun onPageStarted(view: WebView, url: String?, favicon: Bitmap?) {
             super.onPageStarted(view, url, favicon)
             isCurrentPageTrusted = PortalHosts.isTrusted(url)
+            currentUrl = url
+            updateSettingsFab()
             // 새 페이지에서는 다이얼로그가 닫힌 상태로 시작 (JS 가 다시 알려줌)
             isWebModalOpen = false
             updateSwipeRefreshEnabled()
@@ -683,6 +764,8 @@ class MainActivity : AppCompatActivity() {
         override fun doUpdateVisitedHistory(view: WebView, url: String?, isReload: Boolean) {
             super.doUpdateVisitedHistory(view, url, isReload)
             isCurrentPageTrusted = PortalHosts.isTrusted(url)
+            currentUrl = url
+            updateSettingsFab()
         }
 
         override fun onPageCommitVisible(view: WebView, url: String) {
@@ -703,6 +786,13 @@ class MainActivity : AppCompatActivity() {
                 hideErrorView()
                 hideLoadingOverlay()
                 injectPortalEnhancements(view, url)
+                // 설정 화면에서 요청한 관리자 기능: 포털 메인이 뜬 뒤 해당 버튼을 누름
+                pendingPortalClick?.let { elementId ->
+                    if (isPortalMain(url)) {
+                        pendingPortalClick = null
+                        view.postDelayed({ runPortalClick(elementId) }, 800)
+                    }
+                }
             }
         }
 
@@ -828,7 +918,6 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onDestroy() {
-        PortalPush.stateListener = null
         binding.loadingOverlay.animate().cancel()
         binding.webView.apply {
             stopLoading()
@@ -842,7 +931,11 @@ class MainActivity : AppCompatActivity() {
         const val CHANNEL_ID = PortalPush.CHANNEL_NOTICE
         private const val TEST_NOTIFICATION_ID = 1001
         private const val PREFS_NAME = "portal_app_prefs"
-        private const val KEY_NOTIF_ASKED = "notification_permission_asked"
+        private const val KEY_PORTAL_LINKS = "portal_links_json"
+        private const val KEY_FAB_OFFSET = "settings_fab_offset"
+
+        /** 런처 아이콘 길게 누르기 바로가기 "설정" (res/xml/shortcuts.xml) */
+        const val ACTION_OPEN_SETTINGS = "kr.or.kcaa.gwangju.portal.action.OPEN_SETTINGS"
         private const val MIN_BRAND_DISPLAY_DURATION = 2000L // 브랜드 로고 및 정식 명칭 최소 노출 시간 (2.0초)
     }
 }

@@ -271,4 +271,24 @@
 
     </androidx.constraintlayout.widget.ConstraintLayout>
 
+    <!-- 모듈 화면(발주·증명서·의무교육·인사관리)에서 앱 설정을 여는 버튼. 위아래로 끌어 옮길 수 있음 -->
+    <com.google.android.material.floatingactionbutton.FloatingActionButton
+        android:id="@+id/fabSettings"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginEnd="14dp"
+        android:layout_marginBottom="20dp"
+        android:alpha="0.9"
+        android:contentDescription="@string/settings_open"
+        android:visibility="gone"
+        app:backgroundTint="@color/portal_surface"
+        app:borderWidth="1dp"
+        app:elevation="3dp"
+        app:fabCustomSize="44dp"
+        app:layout_constraintBottom_toTopOf="@id/navBarScrim"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:maxImageSize="22dp"
+        app:srcCompat="@drawable/ic_settings_gear"
+        app:tint="@color/text_secondary" />
+
 </androidx.constraintlayout.widget.ConstraintLayout>
