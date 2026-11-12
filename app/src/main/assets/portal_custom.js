@@ -37,12 +37,19 @@
   ];
   const PUSH_ITEMS = PUSH_SECTIONS.flatMap(section => section.items);
 
+  // 다른 기기에서 접수한 발주의 처리상태 알림까지 받으려면 발주 사이트에서 이메일 인증으로 기기를 연결합니다.
+  const ORDER_NOTIFY_LINK = { match: '/orders/notify', fallback: 'https://gwangju-orders-migration.pages.dev/orders/notify' };
+  const REGISTER_ERROR_NOTES = {
+    limit: '알림을 받을 수 있는 기기 수가 가득 차 이 기기를 등록하지 못했습니다. 관리자에게 문의해 주세요.',
+    busy: '요청이 많아 알림 등록이 잠시 미뤄졌습니다. 잠시 후 자동으로 다시 시도합니다.',
+  };
+
   // 권한에 맞는 항목만 남기고, 항목이 하나도 없는 구역은 제외
   const visibleSections = role => PUSH_SECTIONS
     .map(section => ({ ...section, items: section.items.filter(item => hasPermission(role, item.minRole)) }))
     .filter(section => section.items.length > 0);
 
-  let currentRole = 'staff';   // 포털 세션으로 확인되기 전까지는 가장 낮은 권한
+  let currentRole = pushState().role in ROLE_LEVEL ? pushState().role : 'staff';   // 기기에 저장된 권한 (없으면 가장 낮은 권한)
   let lastAdminShown;          // 마지막으로 본 포털 관리자 메뉴 노출 여부
   let pushPending = null;      // 저장 결과를 기다리는 스위치 { type, timer }
 
@@ -227,8 +234,12 @@
           </button>`).join('')}
         </div>
       </div>`).join('') + `
+      <div class="kp-grid kp-push-link">
+        ${tile({ href: resolveHref(ORDER_NOTIFY_LINK, area), title: '발주 알림 기기 연결', desc: '다른 기기에서 접수한 발주 알림도 받기 (이메일 인증)' })}
+      </div>
       ${push.serverReady === false ? '<p class="kp-note">포털 서버의 알림 발송이 아직 준비되지 않아 알림이 오지 않을 수 있습니다. 관리자에게 문의해 주세요.</p>' : ''}
-      <p class="kp-note">발주·업무요청·증명서 알림은 이 앱에서 제출한 요청에 대해서만 전달됩니다. 알림에는 요청 내용이 포함되지 않습니다.${
+      ${REGISTER_ERROR_NOTES[push.registerError] ? `<p class="kp-note">${REGISTER_ERROR_NOTES[push.registerError]}</p>` : ''}
+      <p class="kp-note">발주·업무요청·증명서 알림은 이 앱에서 제출한 요청에 대해 전달되며, 발주 알림은 기기를 연결한 이메일로 접수한 발주도 포함합니다. 알림에는 요청 내용이 포함되지 않습니다.${
         sections.some(section => section.key === 'admin') ? ' 관리자 알림은 관리자로 로그인한 기기에만 전달됩니다.' : ''}</p>`;
     area.querySelectorAll('[data-push-type]').forEach(button => {
       button.addEventListener('click', () => togglePushType(button));
@@ -270,7 +281,19 @@
 
   window.addEventListener('portal:push-type-result', e => finishPushToggle(e.detail || {}));
 
+  // 네이티브가 정한 권한·등록 상태로 스위치를 다시 그립니다. (저장 결과를 기다리는 동안은 건드리지 않음)
+  function applyNativePushState() {
+    if (pushPending) return;
+    const role = pushState().role;
+    if (role in ROLE_LEVEL) currentRole = role;
+    renderPushSwitches();
+  }
+
+  window.addEventListener('portal:push-state', applyNativePushState);
+
   // 포털 관리자 세션으로 권한을 확인합니다. 확인하지 못하면 현재 권한을 그대로 둡니다.
+  // 세션이 끝나도 서버가 기기의 관리자 역할을 유지하는 동안(로그인 후 30일)은 네이티브가 권한을 유지하고,
+  // 결과를 portal:push-state 이벤트로 알려 줍니다.
   async function refreshRole() {
     let role;
     try {
@@ -281,7 +304,7 @@
       return;
     }
     bridge?.setPushRole?.(role);
-    if (role === currentRole) return;
+    if (role === 'staff' || role === currentRole) return;
     currentRole = role;
     renderPushSwitches();
   }

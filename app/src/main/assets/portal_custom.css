@@ -271,6 +271,10 @@ html:has(dialog[open]) {
     border-top: 1px solid var(--kp-line);
 }
 
+.kp-push-link {
+    margin-top: 16px;
+}
+
 .kp-switch-group-title {
     margin: 0 0 8px;
     font-size: 12px;

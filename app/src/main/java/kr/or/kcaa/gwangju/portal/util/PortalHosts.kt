@@ -17,6 +17,19 @@ object PortalHosts {
         "gwangju-hr-migration.pages.dev"           // 인사관리
     )
 
+    /** 푸시 알림이 열 수 있는 도메인: 포털·발주·증명서 (알림 허브가 보내는 주소) */
+    private val NOTIFICATION_HOSTS = setOf(
+        "gwangju-work-portal.pages.dev",
+        "gwangju-orders-migration.pages.dev",
+        "gwangju-student-certificates.pages.dev"
+    )
+
+    fun isNotificationTarget(url: String?): Boolean {
+        if (url.isNullOrBlank()) return false
+        val uri = runCatching { Uri.parse(url) }.getOrNull() ?: return false
+        return isTrusted(uri) && uri.host?.lowercase(Locale.ROOT) in NOTIFICATION_HOSTS
+    }
+
     /** 허용 도메인 목록 (기기 식별 쿠키 설정 등에 사용) */
     val hosts: Set<String> get() = TRUSTED_HOSTS
 

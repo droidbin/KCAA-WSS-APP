@@ -122,7 +122,8 @@ class MainActivity : AppCompatActivity() {
         setupSystemBars()
         binding.tvLoadingVersion.text = getString(R.string.app_version_format, BuildConfig.VERSION_NAME)
 
-        PortalPush.ensureChannel(this)
+        PortalPush.ensureChannels(this)
+        PortalPush.stateListener = { runOnUiThread { dispatchPushState() } }
         setupWebView()
         PortalPush.applyDeviceCookie(this)
         PortalPush.sync(this)
@@ -476,6 +477,15 @@ class MainActivity : AppCompatActivity() {
         )
     }
 
+    /** 웹(설정 모달)에 권한·등록 상태가 바뀌었음을 알림 — 웹이 getPushState 로 다시 읽습니다. */
+    private fun dispatchPushState() {
+        if (!isCurrentPageTrusted || isDestroyed) return
+        binding.webView.evaluateJavascript(
+            "window.dispatchEvent(new CustomEvent('portal:push-state'));",
+            null
+        )
+    }
+
     private fun showTestNotification() {
         if (!areNotificationsEnabled()) {
             Toast.makeText(this, R.string.msg_notif_disabled, Toast.LENGTH_SHORT).show()
@@ -818,6 +828,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onDestroy() {
+        PortalPush.stateListener = null
         binding.loadingOverlay.animate().cancel()
         binding.webView.apply {
             stopLoading()
@@ -828,7 +839,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     companion object {
-        const val CHANNEL_ID = PortalPush.CHANNEL_ID
+        const val CHANNEL_ID = PortalPush.CHANNEL_NOTICE
         private const val TEST_NOTIFICATION_ID = 1001
         private const val PREFS_NAME = "portal_app_prefs"
         private const val KEY_NOTIF_ASKED = "notification_permission_asked"

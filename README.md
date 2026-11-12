@@ -1,6 +1,6 @@
-# 요리광주 업무지원포털 모바일 앱 (v1.5.0)
+# 요리광주 업무지원포털 모바일 앱 (v1.6.0)
 
-[![Release](https://img.shields.io/badge/Release-v1.5.0-blue.svg)](https://github.com/droidbin/KCAA-WSS-APP/releases/tag/v1.5.0)
+[![Release](https://img.shields.io/badge/Release-v1.6.0-blue.svg)](https://github.com/droidbin/KCAA-WSS-APP/releases/tag/v1.6.0)
 [![Platform](https://img.shields.io/badge/Platform-Android%208.0+-green.svg)](https://developer.android.com)
 [![Target SDK](https://img.shields.io/badge/Target%20SDK-36-orange.svg)](https://developer.android.com)
 
@@ -16,8 +16,8 @@
 
 | 다운로드 파일 | 파일명 | 설명 |
 | :--- | :--- | :--- |
-| **정식 릴리스 APK** | **[`kcook_wss_v1.5.0.apk`](https://github.com/droidbin/KCAA-WSS-APP/releases/download/v1.5.0/kcook_wss_v1.5.0.apk)** | 사내 배포용 공식 릴리스 서명 설치 파일 |
-| **스토어 배포용 번들** | **[`app-release.aab`](https://github.com/droidbin/KCAA-WSS-APP/releases/download/v1.5.0/app-release.aab)** | Google Play Console 등록용 App Bundle |
+| **정식 릴리스 APK** | **[`kcook_wss_v1.6.0.apk`](https://github.com/droidbin/KCAA-WSS-APP/releases/download/v1.6.0/kcook_wss_v1.6.0.apk)** | 사내 배포용 공식 릴리스 서명 설치 파일 |
+| **스토어 배포용 번들** | **[`app-release.aab`](https://github.com/droidbin/KCAA-WSS-APP/releases/download/v1.6.0/app-release.aab)** | Google Play Console 등록용 App Bundle |
 
 > 📌 **첫 설치 시 안내 (사내 배포 앱)**:
 > 1. 링크 클릭 후 다운로드 진행 시 "유해한 파일일 수 있음" 경고 발생 시 **[무시하고 다운로드]** 선택
@@ -36,13 +36,22 @@
 | **마이너 업데이트** | `0.1` 단위 | `v1.1.0`, `v1.2.0` ... | 주요 기능 추가, UX/UI 디자인 시스템 개편, 로딩 고도화 |
 | **버그픽스 / 패치** | `0.0.1` 단위 | `v1.1.1`, `v1.2.1` ... | UI/UX 버그 수정, 웹뷰 대응 및 긴급 안정성 패치 |
 
-* Android 내부 빌드 번호(`versionCode`)는 스토어 및 기기 업데이트 호환성을 위해 매 릴리스마다 `+1`씩 단조 증가합니다. (현재 버전: `v1.5.0` / versionCode `15`)
+* Android 내부 빌드 번호(`versionCode`)는 스토어 및 기기 업데이트 호환성을 위해 매 릴리스마다 `+1`씩 단조 증가합니다. (현재 버전: `v1.6.0` / versionCode `16`)
 
 ---
 
 ## 🚀 주요 핵심 기능 및 아키텍처
 
-### 0. 권한별 알림 설정 및 설정 화면 사용성 개선 (신규 v1.5.0)
+### 0. 포털 알림 허브 연동 보강 (신규 v1.6.0)
+- **종류별 알림 채널**: 공지 / 발주 / 업무요청 / 증명서 / 관리자 채널로 나눠, 기기의 시스템 알림 설정에서 종류별로 소리·표시를 조절할 수 있음. 이전의 단일 채널은 삭제(`push/PortalPush.kt`)
+- **알림 주소 검증**: 알림이 여는 주소는 포털·발주·증명서 도메인(https)만 허용하고, 그 외에는 포털 홈으로 대체(`util/PortalHosts.kt`)
+- **모르는 알림 종류**: 서버가 새 종류를 보내면 공지 채널로 표시하고 공지 수신 설정을 따름
+- **서버 상태 확인**: `GET /api/push/preferences`로 기기가 서버에 남아 있는지 가끔(6시간 간격) 확인하고, 서버가 기기를 지웠으면(FCM 토큰 만료 등) 다시 등록
+- **관리자 알림 설정 유지**: 관리자 세션이 끝나도 서버가 기기의 관리자 역할을 유지하는 동안(로그인 후 30일)은 관리자 알림 스위치를 유지하고, 로그아웃하면 바로 숨김
+- **등록 오류 안내**: 기기 수 한도(503)·요청 제한(429) 응답을 설정 화면에 안내하고, 요청 제한 뒤에는 10분간 다시 보내지 않음
+- **발주 알림 기기 연결**: 설정 화면에서 발주 사이트의 `/orders/notify`(이메일 인증)로 이동해, 다른 기기에서 접수한 발주의 처리상태 알림도 받을 수 있음
+
+### 0-00. 권한별 알림 설정 및 설정 화면 사용성 개선 (v1.5.0)
 - **권한별 알림 항목**: 알림 종류마다 최소 권한을 두고(일반직원 < 일반관리자 < 통합관리자), 설정 화면에는 현재 권한으로 볼 수 있는 항목만 만듦. 권한은 포털 관리자 세션(`/api/admin/session`)으로 확인
   - 일반직원: 새 공지 / 발주 처리상태 / 업무요청 답변 / 증명서 수정요청 결과
   - 일반관리자: 위 항목 + 새 발주 접수
@@ -79,7 +88,7 @@
 - **보안 및 스토리지**: DOM Storage, 세션 쿠키 영속화(`CookieManager.flush()`), 다중 창(`window.open` / `target="_blank"`) 제어
 - **레이아웃 보호**: 사용자 시스템 폰트 크기 변경에 따른 웹 UI 깨짐 방지 (`textZoom = 100`)
 - **Android 15 Edge-to-Edge 지원**: 상태바 및 시스템 네비게이션 바와의 겹침 방지 (`ViewCompat.setOnApplyWindowInsetsListener`)
-- **User-Agent 식별자**: 안드로이드 전용 앱임을 식별할 수 있는 브라우저 에이전트 주입 (`KCAAWssAndroid/1.5.0`)
+- **User-Agent 식별자**: 안드로이드 전용 앱임을 식별할 수 있는 브라우저 에이전트 주입 (`KCAAWssAndroid/1.6.0`)
 
 ### 3. 브랜드 디자인 및 가독성 최적화
 - **브랜드 로고 통일**: 포털 및 서브 시스템의 로고 요청을 앱 내장 엠블럼으로 대체하여 일관되게 표시
@@ -93,7 +102,7 @@
   - 물품 및 수업자재 발주요청서 작성
   - 카카오톡 1:1 업무지원 상담 채널
   - 수강생 증명서 발급 시스템 다이렉트 연동
-- **앱 환경 관리**: 포털 원클릭 새로고침 및 캐시/세션 초기화 기능, 앱 버전(`v1.5.0`) 자동 연동 표시
+- **앱 환경 관리**: 포털 원클릭 새로고침 및 캐시/세션 초기화 기능, 앱 버전(`v1.6.0`) 자동 연동 표시
 
 ### 5. 네이티브 파일 입출력 완벽 연동
 - **파일 업로드 (`WebChromeClient.onShowFileChooser`)**: `<input type="file">` 동작 시 **카메라 즉시 촬영(`FileProvider`)**과 **갤러리/파일 탐색기** 동시 지원
@@ -117,17 +126,17 @@
 
 ### 빌드 명령어
 ```bash
-# 1. 정식 릴리스 APK 빌드 (kcook_wss_v1.5.0.apk 생성)
+# 1. 정식 릴리스 APK 빌드 (kcook_wss_v1.6.0.apk 생성)
 ./gradlew assembleRelease
 
 # 2. Google Play Store 배포용 번들 빌드 (app-release.aab 생성)
 ./gradlew bundleRelease
 
-# 3. 디버그 호환용 APK 빌드 (kcook_wss_v1.5.0_debug.apk 생성)
+# 3. 디버그 호환용 APK 빌드 (kcook_wss_v1.6.0_debug.apk 생성)
 ./gradlew assembleDebug
 ```
 
 출력 파일 경로:
-- Release APK: `app/build/outputs/apk/release/kcook_wss_v1.5.0.apk`
+- Release APK: `app/build/outputs/apk/release/kcook_wss_v1.6.0.apk`
 - Release AAB: `app/build/outputs/bundle/release/app-release.aab`
-- Debug APK: `app/build/outputs/apk/debug/kcook_wss_v1.5.0_debug.apk`
+- Debug APK: `app/build/outputs/apk/debug/kcook_wss_v1.6.0_debug.apk`
