@@ -10,6 +10,15 @@
 ## 요청 1. 쿠키 수명 분기 (필수)
 앱 요청(User-Agent 에 `KCAAWssAndroid/` 포함)의 로그인 세션 쿠키를 아래와 같이 발급해 주세요.
 
+**User-Agent 정확한 형식** (앱 v1.7.1 기준, 코드 확인 완료)
+- 웹뷰 페이지 요청: 기본 WebView UA 뒤에 공백 + 토큰이 붙습니다.
+  `Mozilla/5.0 (Linux; Android 14; ...) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/... Mobile Safari/537.36 KCAAWssAndroid/1.7.1`
+- 앱 네이티브 API(`/api/push/*`): UA 가 토큰만 단독으로 전송됩니다. `KCAAWssAndroid/1.7.1`
+- 토큰 형식은 `KCAAWssAndroid/{versionName}` (예: `1.7.1`, 숫자 3자리 `Major.Minor.Patch`, 디버그/릴리스 동일, 접미사 없음).
+- 판별은 대소문자 구분 부분 문자열 `KCAAWssAndroid/` 포함 여부 또는 정규식 `\bKCAAWssAndroid/(\d+\.\d+\.\d+)$` 로 하면 됩니다. (웹뷰는 UA 끝, 네이티브는 UA 전체)
+- 버전은 앱 업데이트마다 바뀌므로 특정 버전에 고정하지 마세요. 세션 쿠키 분기는 `/api/push/*` 가 아닌 웹뷰 로그인 요청 기준입니다.
+- UA 는 클라이언트가 임의로 흉내 낼 수 있으므로 보안 경계로 쓰지 말고, 쿠키 수명 분기(앱 종료 시 세션 쿠키 폐기 동작 유도) 용도로만 사용해 주세요.
+
 | 상태 | 세션 쿠키 |
 |---|---|
 | 사내 IP 접속 | `Max-Age` 가 있는 영구 쿠키 (승인 불필요) |
