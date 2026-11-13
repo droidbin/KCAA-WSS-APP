@@ -30,7 +30,7 @@
     <string name="notif_channel_certificate">증명서</string>
     <string name="notif_channel_certificate_desc">증명서 수정요청이 승인·반려되면 알림</string>
     <string name="notif_channel_admin">관리자</string>
-    <string name="notif_channel_admin_desc">새 발주요청·증명서 수정요청이 접수되면 알림 (관리자 기기)</string>
+    <string name="notif_channel_admin_desc">새 발주요청·증명서 수정요청 접수, 재고 입·출고 등록 알림 (관리자 기기)</string>
     <string name="notif_default_text">업무지원포털에서 새 소식을 확인하세요.</string>
     <string name="notif_test_text">기기 알림이 정상적으로 표시됩니다.</string>
     <string name="msg_notif_test_sent">테스트 알림을 보냈습니다. 상단 알림창을 확인하세요.</string>

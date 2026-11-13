@@ -15,6 +15,7 @@
     certificates: 'gwangju-student-certificates',
     kakao: 'pf.kakao.com',
     hr: 'gwangju-hr',
+    inventory: 'gwangju-inventory',
   };
 
   let lastAdminShown;   // 마지막으로 본 포털 관리자 메뉴 노출 여부

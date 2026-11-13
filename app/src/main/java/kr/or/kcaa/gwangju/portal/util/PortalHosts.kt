@@ -18,11 +18,12 @@ object PortalHosts {
         "gwangju-inventory.pages.dev"              // 재고관리
     )
 
-    /** 푸시 알림이 열 수 있는 도메인: 포털·발주·증명서 (알림 허브가 보내는 주소) */
+    /** 푸시 알림이 열 수 있는 도메인: 포털·발주·증명서·재고관리 (알림 허브가 보내는 주소) */
     private val NOTIFICATION_HOSTS = setOf(
         "gwangju-work-portal.pages.dev",
         "gwangju-orders-migration.pages.dev",
-        "gwangju-student-certificates.pages.dev"
+        "gwangju-student-certificates.pages.dev",
+        "gwangju-inventory.pages.dev"
     )
 
     fun isNotificationTarget(url: String?): Boolean {

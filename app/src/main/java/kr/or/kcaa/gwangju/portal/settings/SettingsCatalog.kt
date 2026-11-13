@@ -40,7 +40,8 @@ object SettingsCatalog {
     )
     private val adminKinds = listOf(
         PushKind("orderAdmin", "새 발주 접수", "새 발주요청이 접수되면 알림"),
-        PushKind("certificateAdmin", "새 증명서 수정요청", "증명서 수정요청이 접수되면 알림")
+        PushKind("certificateAdmin", "새 증명서 수정요청", "증명서 수정요청이 접수되면 알림"),
+        PushKind("inventoryAdmin", "재고 입·출고", "재고관리에 입고·출고가 새로 등록되면 알림")
     )
 
     /** 포털 화면에서 링크를 읽지 못했을 때 쓰는 기본 주소 */
@@ -53,6 +54,7 @@ object SettingsCatalog {
         Shortcut("kakao", "카카오톡 1:1 문의", "업무지원포털 상담 채널", "https://pf.kakao.com/_XExgxeX/chat")
     )
     private val hrShortcut = Shortcut("hr", "인사관리 시스템", "HR 시스템 바로가기", "https://gwangju-hr-migration.pages.dev/hr")
+    private val inventoryShortcut = Shortcut("inventory", "재고관리", "재고 입·출고 관리", "https://gwangju-inventory.pages.dev/")
 
     private val root = SettingsPage(ROOT, "설정") { host ->
         val notificationsOn = PortalNotifications.areEnabled(host.context)
@@ -178,7 +180,7 @@ object SettingsCatalog {
     }
 
     private val shortcutsPage = SettingsPage(SHORTCUTS, "바로가기") { host ->
-        val all = if (host.isAdmin) shortcuts + hrShortcut else shortcuts
+        val all = if (host.isAdmin) shortcuts + hrShortcut + inventoryShortcut else shortcuts
         listOf<SettingsItem>(Header("빠른 업무 바로가기")) + all.map { shortcut ->
             Row(
                 id = "shortcut_${shortcut.key}", title = shortcut.title, description = shortcut.description,

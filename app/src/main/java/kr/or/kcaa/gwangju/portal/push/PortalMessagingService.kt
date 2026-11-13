@@ -16,9 +16,9 @@ import kr.or.kcaa.gwangju.portal.util.PortalHosts
 /**
  * 포털 서버가 보낸 FCM 데이터 메시지를 기기 알림으로 표시합니다.
  *
- * 메시지 data 형식: type(notice|order|support|certificate|orderAdmin|certificateAdmin), title, body, url(선택), tag(선택)
+ * 메시지 data 형식: type(notice|order|support|certificate|orderAdmin|certificateAdmin|inventoryAdmin), title, body, url(선택), tag(선택)
  * 종류별 채널로 표시하고, 같은 tag 는 같은 알림을 덮어씁니다.
- * 알림을 누르면 url(포털·발주·증명서 도메인만 허용)을 앱에서 엽니다.
+ * 알림을 누르면 url(포털·발주·증명서·재고관리 도메인만 허용)을 앱에서 엽니다.
  */
 class PortalMessagingService : FirebaseMessagingService() {
 
@@ -38,7 +38,7 @@ class PortalMessagingService : FirebaseMessagingService() {
         val body = data["body"]?.takeIf { it.isNotBlank() }
             ?: message.notification?.body
             ?: getString(R.string.notif_default_text)
-        // 알림이 여는 주소는 포털·발주·증명서(https)만 허용하고, 그 외에는 포털 홈으로 대체합니다.
+        // 알림이 여는 주소는 포털·발주·증명서·재고관리(https)만 허용하고, 그 외에는 포털 홈으로 대체합니다.
         val url = data["url"]?.takeIf { PortalHosts.isNotificationTarget(it) } ?: BuildConfig.PORTAL_BASE_URL
         val notificationId = (data["tag"] ?: "$type|$url|$title").hashCode()
 
