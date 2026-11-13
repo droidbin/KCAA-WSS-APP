@@ -145,6 +145,15 @@ class SettingsActivity : AppCompatActivity(), SettingsHost {
         runOnUiThread { Toast.makeText(this, message, Toast.LENGTH_SHORT).show() }
     }
 
+    override fun copyToClipboard(label: String, text: String) {
+        val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+        clipboard.setPrimaryClip(android.content.ClipData.newPlainText(label, text))
+        // Android 13+ 는 시스템이 복사 안내를 표시하므로 중복 토스트를 띄우지 않음
+        if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.TIRAMISU) {
+            toast("복사했습니다.")
+        }
+    }
+
     override fun requestMainAction(action: String, url: String?) {
         val result = Intent().putExtra(SettingsContract.EXTRA_ACTION, action)
         if (url != null) result.putExtra(SettingsContract.EXTRA_URL, url)

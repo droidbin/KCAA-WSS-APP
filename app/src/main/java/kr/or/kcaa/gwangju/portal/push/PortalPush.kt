@@ -164,6 +164,16 @@ object PortalPush {
         manager.flush()
     }
 
+    /**
+     * 포털 기기 승인 화면이 기기를 구분하는 값: SHA-256(kcaa_app_device 쿠키 값)의 앞 8자리(16진수 소문자).
+     * 원문 ID는 화면·로그에 노출하지 않습니다.
+     */
+    fun deviceIdShort(context: Context): String =
+        MessageDigest.getInstance("SHA-256")
+            .digest(deviceId(context).toByteArray(Charsets.UTF_8))
+            .joinToString("") { "%02x".format(it) }
+            .take(8)
+
     fun isTypeEnabled(context: Context, type: String): Boolean =
         prefs(context).getBoolean(KEY_TYPE_PREFIX + type, true)
 

@@ -66,6 +66,9 @@ interface SettingsHost {
     fun setBusy(busy: Boolean)
     fun toast(message: String)
 
+    /** 텍스트를 클립보드에 복사 */
+    fun copyToClipboard(label: String, text: String)
+
     /** 메인 화면에 동작을 요청하고 설정 화면을 닫습니다. */
     fun requestMainAction(action: String, url: String? = null)
 

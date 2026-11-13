@@ -14,7 +14,8 @@ object PortalHosts {
         "gwangju-training-migration.pages.dev",    // 법정의무교육
         "gwangju-student-certificates.pages.dev",  // 수강생 증명서발급
         "gwangju-orders-migration.pages.dev",      // 발주요청
-        "gwangju-hr-migration.pages.dev"           // 인사관리
+        "gwangju-hr-migration.pages.dev",          // 인사관리
+        "gwangju-inventory.pages.dev"              // 재고관리
     )
 
     /** 푸시 알림이 열 수 있는 도메인: 포털·발주·증명서 (알림 허브가 보내는 주소) */

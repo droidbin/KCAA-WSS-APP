@@ -258,8 +258,18 @@ object SettingsCatalog {
             Header("앱 정보"),
             Row(id = "info_version", title = "앱 버전", kind = Kind.INFO, value = "v${BuildConfig.VERSION_NAME}"),
             Row(
+                id = "info_device", title = "기기 번호", kind = Kind.ACTION,
+                description = "외부 접속 승인 요청 시 관리자에게 알려 주세요. 누르면 복사됩니다.",
+                value = PortalPush.deviceIdShort(host.context),
+                onClick = { host.copyToClipboard("기기 번호", PortalPush.deviceIdShort(host.context)) }
+            ),
+            Row(
                 id = "info_privacy", title = "개인정보처리방침", kind = Kind.LINK,
                 onClick = { host.requestMainAction(SettingsContract.ACTION_OPEN_URL, PRIVACY_URL) }
+            ),
+            Note(
+                "사내 네트워크 밖에서 접속할 때는 관리자 승인 전까지 앱을 닫으면 다시 로그인해야 합니다. " +
+                    "앱을 삭제하면 기기 번호가 새로 만들어져 다시 승인받아야 합니다."
             ),
             Note("요리광주 업무지원포털 Android 앱")
         )
