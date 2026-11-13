@@ -268,14 +268,14 @@ object SettingsCatalog {
             ),
             PortalPush.verificationLabel(host.context)?.let {
                 Row(id = "info_verify", title = "포털 인증", kind = Kind.INFO, value = it,
-                    description = "포털 메인에서 성명·이메일 인증을 마치면 앱을 닫아도 로그인이 유지됩니다.")
+                    description = "사내 네트워크에서 인증하면 앱을 닫아도 로그인이 유지됩니다. 외부에서 인증한 기기는 관리자 승인 후 유지됩니다.")
             },
             Row(
                 id = "info_privacy", title = "개인정보처리방침", kind = Kind.LINK,
                 onClick = { host.requestMainAction(SettingsContract.ACTION_OPEN_URL, PRIVACY_URL) }
             ),
             Note(
-                "사내 네트워크 밖에서 접속할 때는 관리자 승인 또는 포털 성명·이메일 인증 전까지 앱을 닫으면 다시 로그인해야 합니다. " +
+                "사내 네트워크 밖에서 접속할 때는 관리자 승인 전까지 앱을 닫으면 다시 로그인해야 합니다. " +
                     "앱을 삭제하면 기기 번호가 새로 만들어져 다시 승인받아야 합니다."
             ),
             Note("요리광주 업무지원포털 Android 앱")
