@@ -924,6 +924,8 @@ class MainActivity : AppCompatActivity() {
             webChromeClient = null
             destroy()
         }
+        // 사용자가 앱을 종료한 경우(뒤로가기 등) 승인되지 않은 세션 쿠키 폐기
+        if (isFinishing) PortalApp.clearSessionCookies()
         super.onDestroy()
     }
 
