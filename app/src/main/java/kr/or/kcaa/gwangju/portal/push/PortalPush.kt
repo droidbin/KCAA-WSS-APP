@@ -97,6 +97,10 @@ object PortalPush {
     private const val RATE_LIMIT_WAIT_MS = 10L * 60 * 1000
     private const val REGISTER_PATH = "api/push/device"
     private const val STATE_PATH = "api/push/preferences"
+    private const val VERIFY_PATH = "api/app/verification"
+    private const val KEY_VERIFY = "verify_state"
+    private const val KEY_VERIFY_NAME = "verify_name"
+    private const val VERIFY_MIN_INTERVAL_MS = 30_000L
 
     /** 등록 오류 표시값: 기기 수 한도(503) / 요청 제한(429) */
     private const val ERROR_LIMIT = "limit"
@@ -327,6 +331,59 @@ object PortalPush {
             connection?.disconnect()
         }
     }
+
+    /** 포털 성명·이메일 인증 상태. 표시용이며 서버가 지원하지 않거나 읽지 못하면 null(행 숨김). */
+    fun verificationLabel(context: Context): String? {
+        val store = prefs(context)
+        return when (store.getString(KEY_VERIFY, null)) {
+            "yes" -> "인증됨" + store.getString(KEY_VERIFY_NAME, "").orEmpty().let { if (it.isBlank()) "" else ": $it" }
+            "no" -> "미인증"
+            else -> null
+        }
+    }
+
+    /**
+     * `GET /api/app/verification` → `{verified, name?}` 를 읽어 저장합니다. 값이 바뀌면 설정 화면을 갱신합니다.
+     * 404 등 미지원이면 저장값을 지워 행을 숨깁니다. 설정 화면이 열릴 때마다 호출되므로 30초 안에는 다시 읽지 않습니다.
+     */
+    fun refreshVerification(context: Context) {
+        val appContext = context.applicationContext
+        val now = System.currentTimeMillis()
+        if (now - lastVerifyAt < VERIFY_MIN_INTERVAL_MS) return
+        lastVerifyAt = now
+        executor.execute {
+            var connection: HttpURLConnection? = null
+            var status: String? = null
+            var name = ""
+            try {
+                connection = open(VERIFY_PATH, "GET").apply {
+                    setRequestProperty("Cookie", "$DEVICE_COOKIE=${deviceId(appContext)}")
+                }
+                if (connection.responseCode in 200..299) {
+                    val json = JSONObject(connection.inputStream.bufferedReader().use { it.readText() })
+                    status = if (json.optBoolean("verified", false)) "yes" else "no"
+                    name = json.optString("name", "")
+                } else if (connection.responseCode != 404) {
+                    return@execute // 일시 오류는 기존 값을 유지
+                }
+            } catch (e: Exception) {
+                Log.w(TAG, "verification state unavailable: ${e.message}")
+                return@execute
+            } finally {
+                connection?.disconnect()
+            }
+            val store = prefs(appContext)
+            if (store.getString(KEY_VERIFY, null) == status && store.getString(KEY_VERIFY_NAME, "") == name) return@execute
+            store.edit().apply {
+                if (status == null) remove(KEY_VERIFY) else putString(KEY_VERIFY, status)
+                putString(KEY_VERIFY_NAME, name)
+            }.apply()
+            notifyStateChanged()
+        }
+    }
+
+    @Volatile
+    private var lastVerifyAt = 0L
 
     /**
      * 서버의 이 앱 기기 등록을 해제합니다. (`DELETE /api/push/device`, 기기 쿠키 또는 본문 deviceId 로 식별)
