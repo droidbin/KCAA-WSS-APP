@@ -12,6 +12,9 @@
         <item name="colorOutline">@color/portal_line</item>
         <item name="android:windowLightStatusBar">true</item>
         <item name="android:windowLightNavigationBar">true</item>
+        <!-- 글꼴: 포털과 같은 Pretendard (네이티브 화면·대화상자 공통) -->
+        <item name="android:fontFamily">@font/pretendard</item>
+        <item name="fontFamily">@font/pretendard</item>
     </style>
 
     <!-- Android 12+ 초기 스플래시 테마 -->

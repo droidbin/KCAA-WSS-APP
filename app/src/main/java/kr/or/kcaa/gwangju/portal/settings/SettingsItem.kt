@@ -9,6 +9,46 @@ sealed interface SettingsItem {
     /** 안내 문구 */
     data class Note(val text: String) : SettingsItem
 
+    /**
+     * 화면 맨 위의 요약 카드(포털 패널 모양): 아이콘 상자 + 영문 소제목 + 제목 + 상태 알약 + 설명 + 주요 버튼.
+     * 관리자 페이지 열기처럼 "이 화면에서 가장 먼저 할 일"을 눈에 띄게 둘 때 씁니다.
+     */
+    data class Hero(
+        val eyebrow: String,
+        val title: String,
+        val description: String,
+        val iconRes: Int,
+        val chip: String? = null,
+        val chipTone: Tone = Tone.NEUTRAL,
+        val primaryLabel: String,
+        val onPrimary: () -> Unit
+    ) : SettingsItem
+
+    /** 타일 카드 한 장 (아이콘 상자 + 제목 + 한 줄 설명) */
+    data class Tile(
+        val id: String,
+        val title: String,
+        val description: String? = null,
+        val iconRes: Int,
+        val onClick: () -> Unit
+    )
+
+    /** 타일 두 장을 한 줄에 놓습니다. [Tiles.of] 로 목록을 짝지어 만듭니다. (홀수면 오른쪽은 비움) */
+    data class Tiles(val left: Tile, val right: Tile?) : SettingsItem {
+        companion object {
+            fun of(tiles: List<Tile>): List<Tiles> = tiles.chunked(2).map { Tiles(it[0], it.getOrNull(1)) }
+        }
+    }
+
+    /** 화면 폭 전체 버튼 (로그아웃처럼 따로 떨어진 동작). 위험 동작은 [danger] 로 연한 빨강 바탕 */
+    data class ActionButton(
+        val id: String,
+        val label: String,
+        val iconRes: Int,
+        val danger: Boolean = false,
+        val onClick: () -> Unit
+    ) : SettingsItem
+
     enum class Kind {
         /** 읽기 전용 (값만 표시) */
         INFO,

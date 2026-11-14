@@ -1,6 +1,7 @@
 package kr.or.kcaa.gwangju.portal.settings
 
 import kr.or.kcaa.gwangju.portal.BuildConfig
+import kr.or.kcaa.gwangju.portal.R
 import kr.or.kcaa.gwangju.portal.push.PortalNotifications
 import kr.or.kcaa.gwangju.portal.push.PortalPush
 import kr.or.kcaa.gwangju.portal.settings.SettingsItem.Header
@@ -59,6 +60,8 @@ object SettingsCatalog {
     private val root = SettingsPage(ROOT, "설정") { host ->
         val notificationsOn = PortalNotifications.areEnabled(host.context)
         listOf(
+            // 관리자 페이지로 바로 들어가는 버튼: 로그인 상태와 상관없이 항상 맨 위에 둡니다.
+            adminHero(host),
             Row(
                 id = "nav_notifications", title = "알림", kind = Kind.NAV,
                 description = "기기 알림과 알림 종류",
@@ -72,8 +75,8 @@ object SettingsCatalog {
                 onClick = { host.navigate(SHORTCUTS) }
             ),
             Row(
-                id = "nav_admin", title = "관리자", kind = Kind.NAV,
-                description = "관리자 로그인과 관리 기능",
+                id = "nav_admin", title = "관리자 메뉴", kind = Kind.NAV,
+                description = "게시글 휴지통, 공지 푸시, 연결 시스템",
                 value = if (host.isAdmin) "로그인됨" else null,
                 tone = Tone.GOOD,
                 onClick = { host.navigate(ADMIN) }
@@ -192,48 +195,92 @@ object SettingsCatalog {
         }
     }
 
+    /** 관리자 페이지로 들어가는 요약 카드. 포털 세션이 끊겼어도 눌러서 로그인 화면으로 갈 수 있게 항상 같은 주소를 엽니다. */
+    private fun adminHero(host: SettingsHost): SettingsItem.Hero {
+        val roleLabel = when (PortalPush.role(host.context)) {
+            "super_admin" -> "통합 관리자"
+            "admin" -> "일반 관리자"
+            else -> "관리자"
+        }
+        val loggedIn = host.isAdmin
+        return SettingsItem.Hero(
+            eyebrow = "ADMIN",
+            title = "관리자 페이지",
+            iconRes = R.drawable.ic_lucide_shield_check,
+            description = if (loggedIn) {
+                "관리자로 로그인되어 있습니다. 게시글·알림·시스템 관리는 관리자 페이지에서 합니다."
+            } else {
+                "관리자 인증 후 게시글·알림·시스템을 관리할 수 있습니다."
+            },
+            chip = if (loggedIn) roleLabel else "로그아웃",
+            chipTone = if (loggedIn) Tone.GOOD else Tone.NEUTRAL,
+            primaryLabel = if (loggedIn) "관리자 페이지 열기" else "관리자 로그인",
+            onPrimary = { host.requestMainAction(SettingsContract.ACTION_OPEN_URL, BuildConfig.PORTAL_BASE_URL + "admin") }
+        )
+    }
+
     private val admin = SettingsPage(ADMIN, "관리자") { host ->
+        val items = mutableListOf<SettingsItem>(adminHero(host))
         if (!host.isAdmin) {
+            items += Note("관리자로 로그인하면 의무교육 링크, Slack 알림, 공지 푸시, 게시글 휴지통 같은 관리 기능이 여기에 나타납니다.")
+            return@SettingsPage items
+        }
+
+        items += Header("관리 기능")
+        items += SettingsItem.Tiles.of(
             listOf(
-                Note("관리자 인증 후 포털 관리가 가능합니다."),
-                Row(
-                    id = "admin_login", title = "관리자 로그인", kind = Kind.ACTION,
-                    onClick = { host.requestMainAction(SettingsContract.ACTION_ADMIN_LOGIN) }
-                )
-            )
-        } else {
-            listOf(
-                Header("관리 기능"),
-                Row(
-                    id = "admin_edu", title = "의무교육 URL 관리", description = "수강 링크 설정", kind = Kind.ACTION,
+                SettingsItem.Tile(
+                    id = "admin_edu", title = "의무교육 URL", description = "수강 링크 설정",
+                    iconRes = R.drawable.ic_lucide_graduation_cap,
                     onClick = { host.requestMainAction(SettingsContract.ACTION_ADMIN_EDU) }
                 ),
-                Row(
-                    id = "admin_slack", title = "Slack 알림 설정", description = "지원요청 채널 연동", kind = Kind.ACTION,
+                SettingsItem.Tile(
+                    id = "admin_slack", title = "Slack 알림", description = "지원요청 채널 연동",
+                    iconRes = R.drawable.ic_lucide_message_square,
                     onClick = { host.requestMainAction(SettingsContract.ACTION_ADMIN_SLACK) }
                 ),
-                Row(
-                    id = "admin_push", title = "공지 푸시 알림", description = "발송 현황 및 재전송", kind = Kind.ACTION,
+                SettingsItem.Tile(
+                    id = "admin_push", title = "공지 푸시", description = "발송 현황·재전송",
+                    iconRes = R.drawable.ic_lucide_bell,
                     onClick = { host.requestMainAction(SettingsContract.ACTION_ADMIN_PUSH) }
                 ),
-                Row(
-                    id = "admin_trash", title = "게시글 휴지통", description = "삭제된 게시글 복구", kind = Kind.ACTION,
+                SettingsItem.Tile(
+                    id = "admin_trash", title = "게시글 휴지통", description = "삭제된 게시글 복구",
+                    iconRes = R.drawable.ic_lucide_trash,
                     onClick = { host.requestMainAction(SettingsContract.ACTION_ADMIN_TRASH) }
-                ),
-                Row(
-                    id = "admin_hr", title = hrShortcut.title, description = hrShortcut.description, kind = Kind.LINK,
+                )
+            )
+        )
+
+        items += Header("연결된 시스템")
+        items += SettingsItem.Tiles.of(
+            listOf(
+                SettingsItem.Tile(
+                    id = "admin_hr", title = hrShortcut.title, description = hrShortcut.description,
+                    iconRes = R.drawable.ic_lucide_users,
                     onClick = {
                         host.requestMainAction(SettingsContract.ACTION_OPEN_URL, host.link(hrShortcut.key) ?: hrShortcut.fallback)
                     }
                 ),
-                Header("계정"),
-                Row(
-                    id = "admin_logout", title = "관리자 로그아웃", description = "현재 세션 종료", kind = Kind.ACTION,
-                    danger = true,
-                    onClick = { host.requestMainAction(SettingsContract.ACTION_ADMIN_LOGIN) }
+                SettingsItem.Tile(
+                    id = "admin_inventory", title = inventoryShortcut.title, description = inventoryShortcut.description,
+                    iconRes = R.drawable.ic_lucide_package,
+                    onClick = {
+                        host.requestMainAction(
+                            SettingsContract.ACTION_OPEN_URL,
+                            host.link(inventoryShortcut.key) ?: inventoryShortcut.fallback
+                        )
+                    }
                 )
             )
-        }
+        )
+
+        items += Header("계정")
+        items += SettingsItem.ActionButton(
+            id = "admin_logout", label = "관리자 로그아웃", iconRes = R.drawable.ic_lucide_log_out, danger = true,
+            onClick = { host.requestMainAction(SettingsContract.ACTION_ADMIN_LOGIN) }
+        )
+        items
     }
 
     private val app = SettingsPage(APP, "앱") { host ->
@@ -278,7 +325,7 @@ object SettingsCatalog {
                 "사내 네트워크 밖에서 접속할 때는 관리자 승인 전까지 앱을 닫으면 다시 로그인해야 합니다. " +
                     "앱을 삭제하면 기기 번호가 새로 만들어져 다시 승인받아야 합니다."
             ),
-            Note("요리광주 업무지원포털 Android 앱")
+            Note("요리광주 업무지원포털 Android 앱\n글꼴: Pretendard (SIL Open Font License 1.1)")
         )
     }
 

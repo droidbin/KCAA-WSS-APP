@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 상태 알약: 배경색은 코드에서 상태(성공/주의/기본)에 맞게 바꿉니다 -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+    <solid android:color="@color/portal_accent_soft" />
+    <corners android:radius="999dp" />
+</shape>

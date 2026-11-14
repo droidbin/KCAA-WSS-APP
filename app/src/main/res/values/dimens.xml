@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 모양: 포털 DESIGN.md 의 모서리 토큰 (패널 16 / 아이콘 상자·타일 12 / 버튼·입력 10 / 작은 버튼 8) -->
+    <dimen name="radius_lg">16dp</dimen>
+    <dimen name="radius_md">12dp</dimen>
+    <dimen name="radius_sm">10dp</dimen>
+    <dimen name="radius_xs">8dp</dimen>
+
+    <!-- 간격: 4dp 기반 (모바일 좌우 여백 16dp) -->
+    <dimen name="space_1">4dp</dimen>
+    <dimen name="space_2">8dp</dimen>
+    <dimen name="space_3">12dp</dimen>
+    <dimen name="space_4">16dp</dimen>
+    <dimen name="space_5">20dp</dimen>
+    <dimen name="space_6">24dp</dimen>
+    <dimen name="gutter">16dp</dimen>
+
+    <!-- 구성 요소 크기 -->
+    <dimen name="icon_box">44dp</dimen>
+    <dimen name="button_height">48dp</dimen>
+</resources>

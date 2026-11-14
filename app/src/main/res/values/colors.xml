@@ -16,4 +16,10 @@
     <color name="text_success">#067647</color>          <!-- 설정 화면: 켜짐/허용됨 -->
     <color name="text_warn">#B54708</color>             <!-- 설정 화면: 꺼짐/주의 -->
     <color name="text_danger">#B42318</color>           <!-- 설정 화면: 위험 동작 -->
+    <color name="portal_accent_hover">#1D4ED8</color>   <!-- 주요 버튼 눌림 -->
+    <color name="portal_surface_soft">#F9FAFB</color>   <!-- 보조 버튼 눌림, 표 머리글 -->
+    <color name="portal_line_soft">#EAECF0</color>      <!-- 행 구분선 -->
+    <color name="portal_danger_soft">#FEF3F2</color>    <!-- 위험 버튼 배경 -->
+    <color name="portal_success_soft">#ECFDF3</color>   <!-- 상태 알약(성공) 배경 -->
+    <color name="portal_warn_soft">#FFFAEB</color>      <!-- 상태 알약(주의) 배경 -->
 </resources>
