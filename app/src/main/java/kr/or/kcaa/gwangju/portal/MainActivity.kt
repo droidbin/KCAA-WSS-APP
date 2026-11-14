@@ -334,7 +334,12 @@ class MainActivity : AppCompatActivity() {
     private fun setupBackNavigation() {
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
+                val onVerifyPage = runCatching {
+                    Uri.parse(binding.webView.url ?: "").path?.startsWith("/verify") == true
+                }.getOrDefault(false)
                 when {
+                    // 승인 대기창(/verify)에서는 포털을 벗어나지 않도록 종료 확인만 처리
+                    onVerifyPage -> confirmExit()
                     binding.errorContainer.visibility == View.VISIBLE && binding.webView.canGoBack() -> {
                         hideErrorView()
                         binding.webView.goBack()
@@ -342,22 +347,21 @@ class MainActivity : AppCompatActivity() {
                     binding.webView.canGoBack() -> {
                         binding.webView.goBack()
                     }
-                    else -> {
-                        val now = System.currentTimeMillis()
-                        if (now - lastBackPressedTime < 2000L) {
-                            finish()
-                        } else {
-                            lastBackPressedTime = now
-                            Toast.makeText(
-                                this@MainActivity,
-                                R.string.msg_back_press_exit,
-                                Toast.LENGTH_SHORT
-                            ).show()
-                        }
-                    }
+                    else -> confirmExit()
                 }
             }
         })
+    }
+
+    /** 한 번 더 누르면 종료 (2초 이내) */
+    private fun confirmExit() {
+        val now = System.currentTimeMillis()
+        if (now - lastBackPressedTime < 2000L) {
+            finish()
+        } else {
+            lastBackPressedTime = now
+            Toast.makeText(this, R.string.msg_back_press_exit, Toast.LENGTH_SHORT).show()
+        }
     }
 
     /**

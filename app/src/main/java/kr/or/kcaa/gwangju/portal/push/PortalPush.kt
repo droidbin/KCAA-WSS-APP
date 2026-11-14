@@ -51,7 +51,7 @@ object PortalPush {
 
     /**
      * 알림 종류와 그 설정을 다룰 수 있는 최소 권한 (portal_custom.js 의 PUSH_SECTIONS 와 같은 값).
-     * 공지 / 발주 처리상태 / 업무요청 답변 / 증명서 수정요청 결과 / 새 발주 접수 / 새 증명서 수정요청 / 재고 입·출고
+     * 공지 / 발주 처리상태 / 업무요청 답변 / 증명서 수정요청 결과 / 새 발주 접수 / 새 증명서 수정요청 / 재고 입·출고 / 새 기기 승인 요청
      * (서버 응답의 adminKinds 는 읽지 않고 이 표와 기기에서 확인한 권한으로 정하므로, 모르는 종류는 무시됩니다.)
      */
     private val TYPE_MIN_ROLE = linkedMapOf(
@@ -61,7 +61,8 @@ object PortalPush {
         "certificate" to "staff",
         "orderAdmin" to "admin",
         "certificateAdmin" to "super_admin",
-        "inventoryAdmin" to "admin"
+        "inventoryAdmin" to "admin",
+        "deviceAdmin" to "admin"
     )
 
     private val TYPE_CHANNEL = mapOf(
@@ -71,7 +72,8 @@ object PortalPush {
         "certificate" to CHANNEL_CERTIFICATE,
         "orderAdmin" to CHANNEL_ADMIN,
         "certificateAdmin" to CHANNEL_ADMIN,
-        "inventoryAdmin" to CHANNEL_ADMIN
+        "inventoryAdmin" to CHANNEL_ADMIN,
+        "deviceAdmin" to CHANNEL_ADMIN
     )
 
     val TYPES: List<String> = TYPE_MIN_ROLE.keys.toList()

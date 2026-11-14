@@ -42,7 +42,8 @@ object SettingsCatalog {
     private val adminKinds = listOf(
         PushKind("orderAdmin", "새 발주 접수", "새 발주요청이 접수되면 알림"),
         PushKind("certificateAdmin", "새 증명서 수정요청", "증명서 수정요청이 접수되면 알림"),
-        PushKind("inventoryAdmin", "재고 입·출고", "재고관리에 입고·출고가 새로 등록되면 알림")
+        PushKind("inventoryAdmin", "재고 입·출고", "재고관리에 입고·출고가 새로 등록되면 알림"),
+        PushKind("deviceAdmin", "새 기기 승인 요청", "회사 밖에서 인증한 새 기기가 승인을 기다리면 알림")
     )
 
     /** 포털 화면에서 링크를 읽지 못했을 때 쓰는 기본 주소 */

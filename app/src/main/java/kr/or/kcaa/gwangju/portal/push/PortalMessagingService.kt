@@ -16,7 +16,7 @@ import kr.or.kcaa.gwangju.portal.util.PortalHosts
 /**
  * 포털 서버가 보낸 FCM 데이터 메시지를 기기 알림으로 표시합니다.
  *
- * 메시지 data 형식: type(notice|order|support|certificate|orderAdmin|certificateAdmin|inventoryAdmin), title, body, url(선택), tag(선택)
+ * 메시지 data 형식: type(notice|order|support|certificate|orderAdmin|certificateAdmin|inventoryAdmin|deviceAdmin), title, body, url(선택), tag(선택)
  * 종류별 채널로 표시하고, 같은 tag 는 같은 알림을 덮어씁니다.
  * 알림을 누르면 url(포털·발주·증명서·재고관리 도메인만 허용)을 앱에서 엽니다.
  */
