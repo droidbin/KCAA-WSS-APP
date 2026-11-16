@@ -32,6 +32,24 @@ object PortalHosts {
         return isTrusted(uri) && uri.host?.lowercase(Locale.ROOT) in NOTIFICATION_HOSTS
     }
 
+    private const val SMB_ADMIN_HOST = "kcaa-smb-admin.blofinder.com"
+    private const val SMB_ADMIN_PATH = "/admin-web/"
+
+    /**
+     * SMB Manager 관리자 웹 주소인지 확인합니다. WebView 신뢰 목록에는 넣지 않고 외부 브라우저로만 엽니다.
+     * https, 정확한 호스트, 기본 포트, 사용자 정보 없음, 경로 /admin-web/ 로 시작, 쿼리 없음 (해시는 허용).
+     */
+    fun isSmbAdminTarget(url: String?): Boolean {
+        if (url.isNullOrBlank()) return false
+        val uri = runCatching { Uri.parse(url) }.getOrNull() ?: return false
+        if (!uri.scheme.equals("https", ignoreCase = true)) return false
+        if (uri.host?.lowercase(Locale.ROOT) != SMB_ADMIN_HOST) return false
+        if (uri.port != -1 && uri.port != 443) return false
+        if (!uri.userInfo.isNullOrEmpty()) return false
+        if (uri.encodedQuery != null) return false
+        return uri.path?.startsWith(SMB_ADMIN_PATH) == true && !uri.path.orEmpty().contains("..")
+    }
+
     /** 허용 도메인 목록 (기기 식별 쿠키 설정 등에 사용) */
     val hosts: Set<String> get() = TRUSTED_HOSTS
 

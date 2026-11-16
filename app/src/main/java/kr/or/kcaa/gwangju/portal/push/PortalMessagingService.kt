@@ -16,7 +16,7 @@ import kr.or.kcaa.gwangju.portal.util.PortalHosts
 /**
  * 포털 서버가 보낸 FCM 데이터 메시지를 기기 알림으로 표시합니다.
  *
- * 메시지 data 형식: type(notice|order|support|certificate|orderAdmin|certificateAdmin|inventoryAdmin|deviceAdmin), title, body, url(선택), tag(선택)
+ * 메시지 data 형식: type(notice|order|support|certificate|orderAdmin|certificateAdmin|inventoryAdmin|deviceAdmin|smbAdmin), title, body, url(선택), tag(선택)
  * 종류별 채널로 표시하고, 같은 tag 는 같은 알림을 덮어씁니다.
  * 알림을 누르면 url(포털·발주·증명서·재고관리 도메인만 허용)을 앱에서 엽니다.
  */
@@ -39,11 +39,17 @@ class PortalMessagingService : FirebaseMessagingService() {
             ?: message.notification?.body
             ?: getString(R.string.notif_default_text)
         // 알림이 여는 주소는 포털·발주·증명서·재고관리(https)만 허용하고, 그 외에는 포털 홈으로 대체합니다.
-        val url = data["url"]?.takeIf { PortalHosts.isNotificationTarget(it) } ?: BuildConfig.PORTAL_BASE_URL
+        // 단, SMB Manager 요청(smbAdmin)은 관리자 웹 주소일 때만 앱이 아닌 외부 브라우저로 엽니다.
+        val smbUrl = data["url"]?.takeIf { type == "smbAdmin" && PortalHosts.isSmbAdminTarget(it) }
+        val url = smbUrl ?: data["url"]?.takeIf { PortalHosts.isNotificationTarget(it) } ?: BuildConfig.PORTAL_BASE_URL
         val notificationId = (data["tag"] ?: "$type|$url|$title").hashCode()
 
-        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url), this, MainActivity::class.java).apply {
-            flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
+        val intent = if (smbUrl != null) {
+            Intent(Intent.ACTION_VIEW, Uri.parse(smbUrl)).addCategory(Intent.CATEGORY_BROWSABLE)
+        } else {
+            Intent(Intent.ACTION_VIEW, Uri.parse(url), this, MainActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            }
         }
         val pendingIntent = PendingIntent.getActivity(
             this,
