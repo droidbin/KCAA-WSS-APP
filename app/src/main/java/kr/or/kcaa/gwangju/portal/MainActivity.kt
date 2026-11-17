@@ -499,6 +499,10 @@ class MainActivity : AppCompatActivity() {
         when (action) {
             SettingsContract.ACTION_RELOAD -> loadPortalUrl(BuildConfig.PORTAL_BASE_URL)
             SettingsContract.ACTION_CLEAR_SESSION -> clearSessionAndCache()
+            SettingsContract.ACTION_LOGOUT -> {
+                portalAdmin = false
+                clearSessionAndCache()
+            }
             SettingsContract.ACTION_OPEN_URL -> {
                 val uri = runCatching { Uri.parse(data.getStringExtra(SettingsContract.EXTRA_URL)) }.getOrNull()
                 if (uri != null && uri.scheme.equals("https", ignoreCase = true)) {

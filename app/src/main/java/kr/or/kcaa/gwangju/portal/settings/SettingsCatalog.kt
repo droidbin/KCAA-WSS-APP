@@ -92,6 +92,15 @@ object SettingsCatalog {
                 id = "nav_info", title = "정보", kind = Kind.NAV,
                 description = "앱 버전, 개인정보처리방침",
                 onClick = { host.navigate(INFO) }
+            ),
+            // 직원·관리자 모두에게 보이는 로그아웃 (이 기기의 포털 로그인 세션을 지움)
+            SettingsItem.ActionButton(
+                id = "root_logout", label = "로그아웃", iconRes = R.drawable.ic_lucide_log_out, danger = true,
+                onClick = {
+                    host.confirm("이 기기의 포털 로그인(관리자 로그인 포함)을 해제하고 포털을 다시 시작할까요?") {
+                        host.requestMainAction(SettingsContract.ACTION_LOGOUT)
+                    }
+                }
             )
         )
     }

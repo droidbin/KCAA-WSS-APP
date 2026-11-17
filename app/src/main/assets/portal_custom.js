@@ -18,7 +18,8 @@
     inventory: 'gwangju-inventory',
   };
 
-  let lastAdminShown;   // 마지막으로 본 포털 관리자 메뉴 노출 여부
+  let lastAdmin;        // 마지막으로 확인한 관리자 로그인 여부 (세션 API 기준)
+  let lastRole;         // 마지막으로 네이티브에 알린 푸시 역할
   let lastLinksJson = '';
 
   // 1. 브랜드 로고 적용 (포털 홈, 법정의무교육, 수강생 증명서 등)
@@ -68,28 +69,47 @@
 
   // 4. 포털 관리자 세션으로 권한을 확인해 네이티브에 알립니다. 확인하지 못하면 아무것도 바꾸지 않습니다.
   //    (세션이 끝나도 서버가 기기의 관리자 역할을 유지하는 동안의 권한 처리는 네이티브가 합니다.)
-  async function refreshRole() {
-    let role;
+  //    관리자 로그인 상태도 이 응답(authorized)이 기준입니다. 화면 요소(#admin-menu)나 페이지 종류에 의존하지 않아
+  //    /admin 같은 관리자 화면에서 로그인해도 반영됩니다. 응답이 포털 세션 형식이 아니면(다른 사이트 등) 아무것도 바꾸지 않습니다.
+  let sessionChecking = false;
+  async function refreshAdminSession() {
+    if (sessionChecking) return;
+    sessionChecking = true;
     try {
       const response = await fetch('/api/admin/session', { cache: 'no-store', credentials: 'same-origin' });
+      if (!response.ok) return;
       const session = await response.json();
-      role = session.authorized !== true ? 'staff' : session.role === 'unified' ? 'super_admin' : 'admin';
+      if (typeof session?.authorized !== 'boolean') return;
+      const isAdmin = session.authorized === true;
+      const role = !isAdmin ? 'staff' : session.role === 'unified' ? 'super_admin' : 'admin';
+      if (isAdmin !== lastAdmin) {
+        lastAdmin = isAdmin;
+        bridge?.setPortalAdmin?.(isAdmin);
+      }
+      if (role !== lastRole) {
+        lastRole = role;
+        bridge?.setPushRole?.(role);
+      }
     } catch {
-      return;
+      // 네트워크 오류 등: 이전 상태 유지
+    } finally {
+      sessionChecking = false;
     }
-    bridge?.setPushRole?.(role);
   }
 
-  // 관리자 로그인 상태는 포털 #admin-menu 노출 여부를 따라감. 첫 실행과 로그인·로그아웃 때 네이티브에 알림.
+  // 첫 실행, 포털 관리자 메뉴 노출이 바뀔 때(로그인·로그아웃), 화면이 다시 보일 때, 주기적으로 세션을 다시 확인합니다.
+  let lastMenuHidden;
   function syncAdminState() {
     const adminMenu = document.getElementById('admin-menu');
-    if (!adminMenu) return;
-    const isAdmin = !adminMenu.hidden;
-    if (isAdmin === lastAdminShown) return;
-    lastAdminShown = isAdmin;
-    bridge?.setPortalAdmin?.(isAdmin);
-    refreshRole();
+    const menuHidden = adminMenu ? adminMenu.hidden : undefined;
+    if (lastAdmin === undefined || menuHidden !== lastMenuHidden) {
+      lastMenuHidden = menuHidden;
+      refreshAdminSession();
+    }
   }
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) refreshAdminSession(); });
+  window.addEventListener('focus', refreshAdminSession);
+  setInterval(() => { if (!document.hidden) refreshAdminSession(); }, 20000);
 
   // 5. 바로가기 주소를 네이티브에 알림 (바뀐 경우에만)
   function syncLinks() {

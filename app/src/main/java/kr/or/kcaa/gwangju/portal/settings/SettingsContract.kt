@@ -16,6 +16,7 @@ object SettingsContract {
 
     const val ACTION_RELOAD = "reload"
     const val ACTION_CLEAR_SESSION = "clear_session"
+    const val ACTION_LOGOUT = "logout"                // 직원·관리자 공통: 이 기기의 포털 로그인 세션 해제
     const val ACTION_OPEN_URL = "open_url"
     const val ACTION_ADMIN_LOGIN = "admin_login"      // 로그인·로그아웃 모두 같은 포털 버튼
     const val ACTION_ADMIN_EDU = "admin_edu"
