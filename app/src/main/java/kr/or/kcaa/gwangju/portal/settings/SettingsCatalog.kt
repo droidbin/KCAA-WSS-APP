@@ -37,14 +37,16 @@ object SettingsCatalog {
         PushKind("notice", "새 공지", "포털에 새 공지가 등록되면 알림"),
         PushKind("order", "발주 처리상태", "내 발주의 처리상태가 바뀌면 알림"),
         PushKind("support", "업무요청 답변", "내 업무요청에 답변이 등록되면 알림"),
-        PushKind("certificate", "증명서 수정요청 결과", "내 수정요청이 승인·반려되면 알림")
+        PushKind("certificate", "증명서 수정요청 결과", "내 수정요청이 승인·반려되면 알림"),
+        PushKind("session", "로그인 만료 안내", "포털 로그인이 하루 뒤 만료되면 미리 알림 (이메일 인증 회원·관리자)")
     )
     private val adminKinds = listOf(
         PushKind("orderAdmin", "새 발주 접수", "새 발주요청이 접수되면 알림"),
         PushKind("certificateAdmin", "새 증명서 수정요청", "증명서 수정요청이 접수되면 알림"),
         PushKind("inventoryAdmin", "재고 입·출고", "재고관리에 입고·출고가 새로 등록되면 알림"),
         PushKind("deviceAdmin", "새 기기 승인 요청", "회사 밖에서 인증한 새 기기가 승인을 기다리면 알림"),
-        PushKind("smbAdmin", "SMB Manager 요청", "직원이 SMB Manager로 PC 등록·정보 정정·신고 등을 요청하면 알림")
+        PushKind("smbAdmin", "SMB Manager 요청", "직원이 SMB Manager로 PC 등록·정보 정정·신고 등을 요청하면 알림"),
+        PushKind("opsAdmin", "운영 감시 알림", "포털·서비스 운영 감시에서 이상이 감지되면 알림 (통합 관리자)")
     )
 
     /** 포털 화면에서 링크를 읽지 못했을 때 쓰는 기본 주소 */
