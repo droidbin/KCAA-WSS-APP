@@ -53,6 +53,7 @@ import kr.or.kcaa.gwangju.portal.push.PortalNotifications
 import kr.or.kcaa.gwangju.portal.push.PortalPush
 import kr.or.kcaa.gwangju.portal.settings.SettingsActivity
 import kr.or.kcaa.gwangju.portal.settings.SettingsContract
+import kr.or.kcaa.gwangju.portal.util.BlobFileOpener
 import kr.or.kcaa.gwangju.portal.util.PortalDownloadHelper
 import kr.or.kcaa.gwangju.portal.util.PortalHosts
 import java.io.File
@@ -271,7 +272,8 @@ class MainActivity : AppCompatActivity() {
                         portalLinksJson = json
                         getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
                             .edit().putString(KEY_PORTAL_LINKS, json).apply()
-                    }
+                    },
+                    onBlobFileReady = { uri -> BlobFileOpener.open(this@MainActivity, uri) }
                 ),
                 PortalJsBridge.BRIDGE_NAME
             )
@@ -617,6 +619,11 @@ class MainActivity : AppCompatActivity() {
      */
     private fun handleNavigation(uri: Uri): Boolean {
         val scheme = uri.scheme?.lowercase(Locale.ROOT) ?: return false
+        // blob: 파일(수료증·증명서 PDF 등)은 외부 앱으로 넘길 수 없어 앱이 받아서 뷰어로 엽니다.
+        if (scheme == "blob") {
+            BlobFileOpener.request(binding.webView, uri, PortalJsBridge.BRIDGE_NAME)
+            return true
+        }
         if (scheme == "http" || scheme == "https") {
             if (PortalHosts.isTrusted(uri)) return false
             openExternally(uri)
@@ -878,6 +885,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         // target="_blank" 또는 window.open() 팝업 링크 처리
+        // 화면에 붙이지 않는 임시 WebView 로 팝업의 첫 이동 주소만 받아 메인 WebView·외부 앱·파일 뷰어로 넘깁니다.
         override fun onCreateWindow(
             view: WebView,
             isDialog: Boolean,
@@ -885,19 +893,48 @@ class MainActivity : AppCompatActivity() {
             resultMsg: Message
         ): Boolean {
             val tempWebView = WebView(this@MainActivity)
+            var handled = false
+
+            fun release() {
+                if (handled) return
+                handled = true
+                tempWebView.stopLoading()
+                // 콜백 안에서 바로 destroy 하지 않고 다음 루프에서 정리
+                tempWebView.post { tempWebView.destroy() }
+            }
+
+            fun route(targetUri: Uri?) {
+                if (handled || targetUri == null) return
+                val scheme = targetUri.scheme?.lowercase(Locale.ROOT)
+                // window.open('') 직후의 빈 창은 다음 이동(location.href = ...)을 기다림
+                if (scheme == "about") return
+                if (!handleNavigation(targetUri)) {
+                    binding.webView.loadUrl(targetUri.toString())
+                }
+                release()
+            }
+
             tempWebView.webViewClient = object : WebViewClient() {
                 override fun shouldOverrideUrlLoading(
                     view: WebView,
                     request: WebResourceRequest
                 ): Boolean {
-                    val targetUri = request.url
-                    if (!handleNavigation(targetUri)) {
-                        binding.webView.loadUrl(targetUri.toString())
-                    }
-                    tempWebView.destroy()
+                    route(request.url)
                     return true
                 }
+
+                // blob: 등 shouldOverrideUrlLoading 을 거치지 않는 이동도 여기서 받음
+                override fun onPageStarted(view: WebView, url: String?, favicon: Bitmap?) {
+                    if (url != null) route(Uri.parse(url))
+                }
             }
+            tempWebView.webChromeClient = object : WebChromeClient() {
+                // 웹이 오류 시 win.close() 를 부르면 정리
+                override fun onCloseWindow(window: WebView) = release()
+            }
+            // 빈 창만 열고 아무 이동이 없으면 1분 뒤 정리 (임시 WebView 가 남지 않게)
+            binding.webView.postDelayed({ release() }, POPUP_IDLE_TIMEOUT_MS)
+
             val transport = resultMsg.obj as WebView.WebViewTransport
             transport.webView = tempWebView
             resultMsg.sendToTarget()
@@ -943,6 +980,7 @@ class MainActivity : AppCompatActivity() {
         private const val PREFS_NAME = "portal_app_prefs"
         private const val KEY_PORTAL_LINKS = "portal_links_json"
         private const val KEY_FAB_OFFSET = "settings_fab_offset"
+        private const val POPUP_IDLE_TIMEOUT_MS = 60_000L
 
         /** 런처 아이콘 길게 누르기 바로가기 "설정" (res/xml/shortcuts.xml) */
         const val ACTION_OPEN_SETTINGS = "kr.or.kcaa.gwangju.portal.action.OPEN_SETTINGS"

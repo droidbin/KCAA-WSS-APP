@@ -10,6 +10,8 @@
     <string name="msg_download_started">파일 다운로드를 시작합니다.</string>
     <string name="msg_download_failed">다운로드를 시작할 수 없습니다.</string>
     <string name="msg_open_external_failed">이 링크를 열 수 있는 앱이 없습니다.</string>
+    <string name="msg_file_open_failed">파일을 열지 못했습니다. 잠시 후 다시 시도해 주세요.</string>
+    <string name="msg_file_no_viewer">이 파일을 열 수 있는 앱이 없습니다. PDF 뷰어를 설치해 주세요.</string>
     <string name="chooser_file_upload">첨부할 파일 또는 사진 선택</string>
 
     <!-- 설정 -->

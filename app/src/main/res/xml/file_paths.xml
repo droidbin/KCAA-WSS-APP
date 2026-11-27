@@ -1,5 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <paths>
     <cache-path name="camera_photos" path="camera/" />
+    <!-- 웹 blob 파일(수료증·증명서 PDF 등)을 뷰어 앱에 넘길 때 (BlobFileOpener) -->
+    <cache-path name="shared_files" path="shared/" />
     <external-files-path name="external_files" path="." />
 </paths>

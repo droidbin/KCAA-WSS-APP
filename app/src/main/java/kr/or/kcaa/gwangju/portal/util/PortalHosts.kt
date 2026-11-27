@@ -6,6 +6,11 @@ import java.util.Locale
 /**
  * 앱 내부 WebView에서 열고, 네이티브 브릿지·권한·스타일 주입을 허용하는 포털 계열 도메인 목록.
  * 목록에 없는 http(s) 링크는 외부 브라우저(또는 해당 앱)로 엽니다.
+ *
+ * [동기화 규칙] 같은 내부 주소 목록이 웹 저장소(KCAA-WSS-Portal)의
+ * shared/kcaa-shell/kcaa-session.js `INTERNAL_ORIGINS` 에도 있습니다.
+ * 웹은 앱 모드(UA `KCAAWssAndroid/`)에서 이 주소들로 가는 새 창 링크를 같은 창 이동(location.assign)으로 바꿉니다.
+ * 시스템 주소를 추가·변경할 때는 두 곳을 함께 고치세요.
  */
 object PortalHosts {
 

@@ -1,6 +1,7 @@
 package kr.or.kcaa.gwangju.portal.bridge
 
 import android.content.Context
+import android.net.Uri
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
@@ -10,6 +11,7 @@ import android.widget.Toast
 import androidx.core.app.NotificationManagerCompat
 import kr.or.kcaa.gwangju.portal.BuildConfig
 import kr.or.kcaa.gwangju.portal.push.PortalPush
+import kr.or.kcaa.gwangju.portal.util.BlobFileOpener
 import org.json.JSONObject
 
 /**
@@ -30,7 +32,8 @@ class PortalJsBridge(
     private val onPushTypeResult: (type: String, enabled: Boolean, saved: Boolean) -> Unit,
     private val onOpenSettings: () -> Unit,
     private val onPortalAdminChanged: (Boolean) -> Unit,
-    private val onPortalLinksChanged: (String) -> Unit
+    private val onPortalLinksChanged: (String) -> Unit,
+    private val onBlobFileReady: (Uri?) -> Unit
 ) {
     private val mainHandler = Handler(Looper.getMainLooper())
 
@@ -93,6 +96,17 @@ class PortalJsBridge(
     /** 포털 화면에서 읽은 바로가기 주소(JSON 객체: 키 → 주소). 포털 주소가 바뀌어도 설정 화면이 따라가게 합니다. */
     @JavascriptInterface
     fun setPortalLinks(json: String) = runTrusted { onPortalLinksChanged(json.take(4000)) }
+
+    /**
+     * 앱이 요청한 blob 파일(수료증·증명서 PDF 등)을 data URL 로 받습니다. (BlobFileOpener.request 가 호출)
+     * 앱이 발급한 1회용 토큰이 맞을 때만 저장하고 뷰어로 엽니다. 디코딩은 이 브릿지 스레드에서 합니다.
+     */
+    @JavascriptInterface
+    fun receiveBlobFile(token: String, dataUrl: String, mimeType: String) {
+        if (!isTrustedContext()) return
+        val uri = BlobFileOpener.saveFromBridge(context, token, dataUrl, mimeType)
+        mainHandler.post { onBlobFileReady(uri) }
+    }
 
     @JavascriptInterface
     fun sendTestNotification() = runTrusted { onSendTestNotification() }
